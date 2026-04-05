@@ -58,7 +58,7 @@ var hSt={width:10,height:10,background:"#00d4ff",border:"1.5px solid #fff",borde
 function NI(p){return React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4,marginBottom:5}},React.createElement("span",{style:{fontSize:10,color:"#555",width:48,flexShrink:0}},p.label),React.createElement("input",{type:"number",min:p.min,max:p.max,step:p.step||1,value:Math.round(p.value*100)/100,onFocus:p.onFocus,onChange:function(e){p.onChange(+e.target.value)},style:Object.assign({},iS,{flex:1})}),p.unit&&React.createElement("span",{style:{fontSize:9,color:"#444",width:16}},p.unit))}
 
 export default function App(){
-  var fileRef=useRef(null),imgObjRef=useRef(null),dragRef=useRef(null),canvasRef=useRef(null),panRef=useRef(null);
+  var fileRef=useRef(null),assetFileRef=useRef(null),imgObjRef=useRef(null),dragRef=useRef(null),canvasRef=useRef(null),panRef=useRef(null);
   var _bg=useState("#0f0f0f");var bgColor=_bg[0],setBgColor=_bg[1];
   var _z=useState(1);var zoom=_z[0],setZoom=_z[1];
   var _pan=useState({x:0,y:0});var pan=_pan[0],setPan=_pan[1];
@@ -81,6 +81,10 @@ export default function App(){
   
   var _cfnt=useState([]); var customFonts=_cfnt[0],setCustomFonts=_cfnt[1];
   var _cfntIn=useState(""); var customFontInput=_cfntIn[0],setCustomFontInput=_cfntIn[1];
+  var _assetLib=useState([]); var assetLibrary=_assetLib[0],setAssetLibrary=_assetLib[1];
+  var _assetUrl=useState(""); var assetUrlInput=_assetUrl[0],setAssetUrlInput=_assetUrl[1];
+  var _assetMsg=useState("여러 PNG 업로드 또는 URL 붙여넣기로 에셋 트레이를 채우세요."); var assetMessage=_assetMsg[0],setAssetMessage=_assetMsg[1];
+  var _assetBusy=useState(false); var assetLoading=_assetBusy[0],setAssetLoading=_assetBusy[1];
   
   var _sumId=useState(null); var summarizingId=_sumId[0], setSummarizingId=_sumId[1]; // 에이전트 요약 상태
   
@@ -376,7 +380,108 @@ export default function App(){
       e.preventDefault();setIsPanning(true);panRef.current={type:"pan",mx:e.clientX,my:e.clientY,sx:pan.x,sy:pan.y};
     }
   }
+  function syncMainImage(src,w,h){
+    setLayers(function(p){return p.map(function(l){return l.type==="image"?Object.assign({},l,{src:src,imgW:w||0,imgH:h||0}):l})});
+  }
+  function appendAssets(nextAssets){
+    if(!nextAssets || nextAssets.length===0) return;
+    setAssetLibrary(function(prev){
+      var merged = prev.slice();
+      nextAssets.forEach(function(asset){
+        if(!merged.some(function(existing){ return existing.src===asset.src || existing.name===asset.name; })){
+          merged.push(asset);
+        }
+      });
+      return merged;
+    });
+  }
+  function applyAsset(asset){
+    if(!asset || !asset.src) return;
+    saveHistory();
+    var img = new Image();
+    img.onload = function(){
+      imgObjRef.current = img;
+      syncMainImage(asset.src, asset.w || img.naturalWidth, asset.h || img.naturalHeight);
+      setAssetMessage("선택한 에셋을 메인 비주얼로 적용했습니다: " + asset.name);
+    };
+    img.src = asset.src;
+  }
+  function readFileAsset(file){
+    return new Promise(function(resolve,reject){
+      var reader=new FileReader();
+      reader.onload=function(ev){
+        var img = new Image();
+        img.onload = function(){
+          resolve({id:"asset-"+Date.now()+"-"+Math.random().toString(36).slice(2,7),name:file.name,src:ev.target.result,w:img.naturalWidth,h:img.naturalHeight,origin:"upload"});
+        };
+        img.onerror = reject;
+        img.src = ev.target.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+  function fetchUrlAsAsset(url){
+    return fetch(url).then(function(res){
+      if(!res.ok) throw new Error("HTTP " + res.status);
+      return res.blob();
+    }).then(function(blob){
+      return new Promise(function(resolve,reject){
+        var reader = new FileReader();
+        reader.onload = function(ev){
+          var img = new Image();
+          img.onload = function(){
+            var cleanName = url.split("/").pop() || "remote-image";
+            resolve({id:"asset-"+Date.now()+"-"+Math.random().toString(36).slice(2,7),name:cleanName,src:ev.target.result,w:img.naturalWidth,h:img.naturalHeight,origin:"url"});
+          };
+          img.onerror = reject;
+          img.src = ev.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    });
+  }
   function handleFile(file){if(!file)return;saveHistory();var reader=new FileReader();reader.onload=function(ev){var img=new Image();img.onload=function(){imgObjRef.current=img;setLayers(function(p){return p.map(function(l){return l.type==="image"?Object.assign({},l,{src:ev.target.result,imgW:img.naturalWidth,imgH:img.naturalHeight}):l})})};img.src=ev.target.result};reader.readAsDataURL(file)}
+  function handleAssetFiles(fileList){
+    var files = Array.from(fileList || []).filter(function(file){ return file && file.type.indexOf("image/")===0; });
+    if(files.length===0){
+      setAssetMessage("이미지 파일을 선택해주세요.");
+      return;
+    }
+    setAssetLoading(true);
+    Promise.all(files.map(readFileAsset)).then(function(assets){
+      appendAssets(assets);
+      setAssetMessage(assets.length + "개의 로컬 에셋을 트레이에 추가했습니다.");
+    }).catch(function(){
+      setAssetMessage("일부 로컬 에셋을 읽지 못했습니다.");
+    }).finally(function(){
+      setAssetLoading(false);
+      if(assetFileRef.current) assetFileRef.current.value = "";
+    });
+  }
+  function importAssetUrls(){
+    var urls = assetUrlInput.split(/\r?\n/).map(function(line){ return line.trim(); }).filter(Boolean);
+    if(urls.length===0){
+      setAssetMessage("이미지 URL을 한 줄에 하나씩 입력해주세요.");
+      return;
+    }
+    setAssetLoading(true);
+    Promise.allSettled(urls.map(fetchUrlAsAsset)).then(function(results){
+      var assets = results.filter(function(item){ return item.status==="fulfilled"; }).map(function(item){ return item.value; });
+      var failed = results.length - assets.length;
+      appendAssets(assets);
+      if(assets.length && failed===0) setAssetMessage(assets.length + "개의 URL 에셋을 가져왔습니다.");
+      else if(assets.length) setAssetMessage(assets.length + "개를 추가했고, " + failed + "개는 CORS 또는 응답 문제로 실패했습니다.");
+      else setAssetMessage("URL 에셋을 가져오지 못했습니다. 공개 이미지 URL과 CORS 허용 여부를 확인해주세요.");
+      if(assets.length) setAssetUrlInput("");
+    }).finally(function(){
+      setAssetLoading(false);
+    });
+  }
+  function removeAsset(assetId){
+    setAssetLibrary(function(prev){ return prev.filter(function(asset){ return asset.id!==assetId; }); });
+  }
   
   function applyTheme(t){
     saveHistory();
@@ -810,6 +915,44 @@ export default function App(){
           React.createElement("div",null,"🖱 스크롤: 줌 | Space+드래그: 패닝"),
           React.createElement("div",null,"단축키: Ctrl+Z (실행취소)"),
           React.createElement("div",null,"사이즈 ",React.createElement("span",{style:{color:"#888"}},visSizes.length)," | 레이어 ",React.createElement("span",{style:{color:"#888"}},layers.length))
+        )
+      )
+    ),
+
+    React.createElement("div",{style:{height:180,background:"#0d0d0d",borderTop:"1px solid #1a1a1a",display:"flex",flexDirection:"column",flexShrink:0}},
+      React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,padding:"10px 12px 8px",borderBottom:"1px solid #151515"}},
+        React.createElement("div",{style:{fontSize:10,color:"#666",textTransform:"uppercase",letterSpacing:".08em",fontWeight:700}},"Asset Tray"),
+        React.createElement("div",{style:{fontSize:10,color:"#444"}},"썸네일 클릭 시 메인 비주얼 즉시 교체"),
+        React.createElement("div",{style:{marginLeft:"auto",fontSize:10,color:assetLoading?"#00d4ff":"#555"}},assetLoading?"불러오는 중...":assetMessage)
+      ),
+      React.createElement("div",{style:{display:"flex",gap:12,padding:"10px 12px",minHeight:0,flex:1}},
+        React.createElement("div",{style:{width:260,display:"flex",flexDirection:"column",gap:8,flexShrink:0}},
+          React.createElement("button",{onClick:function(){assetFileRef.current&&assetFileRef.current.click();},style:{padding:"8px 10px",borderRadius:4,border:"1px dashed #333",background:"#111",color:"#aaa",cursor:"pointer",fontSize:11,fontFamily:"inherit"}},"+ 로컬 에셋 추가"),
+          React.createElement("input",{ref:assetFileRef,type:"file",accept:"image/*",multiple:true,onChange:function(e){handleAssetFiles(e.target.files);},style:{display:"none"}}),
+          React.createElement("textarea",{value:assetUrlInput,onChange:function(e){setAssetUrlInput(e.target.value);},placeholder:"이미지 URL을 한 줄에 하나씩 붙여넣으세요",rows:5,style:{background:"#111",border:"1px solid #222",borderRadius:4,padding:"8px 10px",color:"#bbb",fontSize:11,fontFamily:"'JetBrains Mono',monospace",resize:"none",width:"100%",boxSizing:"border-box"}}),
+          React.createElement("button",{onClick:importAssetUrls,disabled:assetLoading,style:{padding:"7px 10px",borderRadius:4,border:"none",background:assetLoading?"#222":"linear-gradient(135deg,#00d4ff,#0099cc)",color:assetLoading?"#555":"#001018",cursor:assetLoading?"default":"pointer",fontSize:11,fontWeight:700,fontFamily:"inherit"}},"URL 에셋 불러오기")
+        ),
+        React.createElement("div",{style:{flex:1,minWidth:0,overflowX:"auto",overflowY:"hidden"}},
+          assetLibrary.length===0
+            ?React.createElement("div",{style:{height:"100%",minHeight:110,border:"1px dashed #222",borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",color:"#333",fontSize:12,textAlign:"center",padding:20}}, "에셋을 추가하면 이곳에 썸네일이 쌓입니다.")
+            :React.createElement("div",{style:{display:"flex",gap:10,height:"100%"}},
+                assetLibrary.map(function(asset){
+                  var isActive = imgLayer && imgLayer.src===asset.src;
+                  return React.createElement("div",{key:asset.id,style:{width:144,flexShrink:0,border:isActive?"1px solid #00d4ff":"1px solid #222",borderRadius:6,background:isActive?"rgba(0,212,255,.06)":"#111",overflow:"hidden",display:"flex",flexDirection:"column"}},
+                    React.createElement("button",{onClick:function(){applyAsset(asset);},style:{border:"none",padding:0,background:"transparent",cursor:"pointer",textAlign:"left",color:"inherit"}},
+                      React.createElement("div",{style:{height:96,background:"#0a0a0a"}},React.createElement("img",{src:asset.src,alt:asset.name,style:{width:"100%",height:"100%",objectFit:"cover",display:"block"}})),
+                      React.createElement("div",{style:{padding:"8px 9px 6px"}},
+                        React.createElement("div",{style:{fontSize:10,color:isActive?"#00d4ff":"#ccc",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},asset.name),
+                        React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:3}},(asset.w||0)+"×"+(asset.h||0)+" · "+asset.origin)
+                      )
+                    ),
+                    React.createElement("div",{style:{display:"flex",gap:6,padding:"0 9px 8px"}},
+                      React.createElement("button",{onClick:function(){applyAsset(asset);},style:{flex:1,padding:"5px 0",border:"none",borderRadius:4,background:isActive?"rgba(0,212,255,.12)":"#171717",color:isActive?"#00d4ff":"#999",cursor:"pointer",fontSize:10,fontFamily:"inherit"}},isActive?"적용됨":"적용"),
+                      React.createElement("button",{onClick:function(){removeAsset(asset.id);},style:{padding:"5px 8px",border:"1px solid #2a1515",borderRadius:4,background:"transparent",color:"#a55",cursor:"pointer",fontSize:10,fontFamily:"inherit"}},"삭제")
+                    )
+                  );
+                })
+              )
         )
       )
     )
