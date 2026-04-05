@@ -32,13 +32,6 @@ var ALL_SIZES=Object.values(PLATFORMS).flatMap(function(p){return p.sizes});
 var BASE_W=1080;
 var ROLES=[{key:"headline",label:"Headline",min:10},{key:"subheadline",label:"Sub-headline",min:8},{key:"cta",label:"CTA Button",min:10},{key:"legal",label:"법적 고지",min:7}];
 
-var THEMES = [
-  {name:"LG 레드", bg:"#A50034", text:"#ffffff", ctaBg:"#111111", ctaText:"#ffffff", font:"Noto Sans KR"},
-  {name:"다크 모던", bg:"#0f0f0f", text:"#ffffff", ctaBg:"#00d4ff", ctaText:"#000000", font:"Montserrat"},
-  {name:"클린 화이트", bg:"#f5f5f5", text:"#111111", ctaBg:"#0071e3", ctaText:"#ffffff", font:"Roboto"},
-  {name:"네온 팝", bg:"#2d1b69", text:"#00ffcc", ctaBg:"#ff00ff", ctaText:"#000000", font:"Black Han Sans"},
-];
-
 function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
 function getSafe(sz){var s=sz.safe;return s.pct?{t:sz.h*s.t/100,b:sz.h*s.b/100,l:sz.w*s.l/100,r:sz.w*s.r/100}:{t:s.t,b:s.b,l:s.l,r:s.r}}
 function contrast(a,b){function l(h){var v=[h.slice(1,3),h.slice(3,5),h.slice(5,7)].map(function(c){var x=parseInt(c,16)/255;return x<=.03928?x/12.92:Math.pow((x+.055)/1.055,2.4)});return .2126*v[0]+.7152*v[1]+.0722*v[2]}var l1=l(a),l2=l(b);return(Math.max(l1,l2)+.05)/(Math.min(l1,l2)+.05)}
@@ -56,9 +49,18 @@ var iS={background:"#0a0a0a",border:"1px solid #222",borderRadius:3,padding:"3px
 var sT={fontSize:10,color:"#555",textTransform:"uppercase",letterSpacing:".08em",marginBottom:8,fontWeight:600};
 var hSt={width:10,height:10,background:"#00d4ff",border:"1.5px solid #fff",borderRadius:2,position:"absolute",zIndex:30,boxShadow:"0 0 6px rgba(0,0,0,.6)"};
 function NI(p){return React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4,marginBottom:5}},React.createElement("span",{style:{fontSize:10,color:"#555",width:48,flexShrink:0}},p.label),React.createElement("input",{type:"number",min:p.min,max:p.max,step:p.step||1,value:Math.round(p.value*100)/100,onFocus:p.onFocus,onChange:function(e){p.onChange(+e.target.value)},style:Object.assign({},iS,{flex:1})}),p.unit&&React.createElement("span",{style:{fontSize:9,color:"#444",width:16}},p.unit))}
+function renderResizeHandles(sid,lid,beginDrag){
+  return React.createElement(React.Fragment,null,
+    React.createElement("div",{onMouseDown:function(e){beginDrag(e,sid,lid,"resize-se")},style:Object.assign({},hSt,{bottom:-4,right:-4,cursor:"nwse-resize"})}),
+    React.createElement("div",{onMouseDown:function(e){beginDrag(e,sid,lid,"resize-e")},style:Object.assign({},hSt,{top:"50%",right:-4,transform:"translateY(-50%)",cursor:"ew-resize"})}),
+    React.createElement("div",{onMouseDown:function(e){beginDrag(e,sid,lid,"resize-w")},style:Object.assign({},hSt,{top:"50%",left:-4,transform:"translateY(-50%)",cursor:"ew-resize"})}),
+    React.createElement("div",{onMouseDown:function(e){beginDrag(e,sid,lid,"resize-s")},style:Object.assign({},hSt,{left:"50%",bottom:-4,transform:"translateX(-50%)",cursor:"ns-resize"})}),
+    React.createElement("div",{onMouseDown:function(e){beginDrag(e,sid,lid,"resize-n")},style:Object.assign({},hSt,{left:"50%",top:-4,transform:"translateX(-50%)",cursor:"ns-resize"})})
+  );
+}
 
 export default function App(){
-  var fileRef=useRef(null),assetFileRef=useRef(null),imgObjRef=useRef(null),dragRef=useRef(null),canvasRef=useRef(null),panRef=useRef(null);
+  var fileRef=useRef(null),assetFileRef=useRef(null),imgObjRef=useRef(null),dragRef=useRef(null),canvasRef=useRef(null),viewportRef=useRef(null),panRef=useRef(null),lastPointerRef=useRef(null);
   var _bg=useState("#0f0f0f");var bgColor=_bg[0],setBgColor=_bg[1];
   var _z=useState(1);var zoom=_z[0],setZoom=_z[1];
   var _pan=useState({x:0,y:0});var pan=_pan[0],setPan=_pan[1];
@@ -151,7 +153,7 @@ export default function App(){
   var allSizes=ALL_SIZES.concat(customSizes);
   var visSizes=allSizes.filter(function(s){return selIds.indexOf(s.id)!==-1});
   var imgLayer=layers.find(function(l){return l.type==="image"});
-  var activeLayerObj=layers.find(function(l){return l.id===activeEl});
+  var activeBaseLayerObj=layers.find(function(l){return l.id===activeEl});
   var allFontsList = FONTS.concat(customFonts);
 
   useEffect(function(){
@@ -182,7 +184,26 @@ export default function App(){
     return function(){window.removeEventListener("keydown",kb);window.removeEventListener("keyup",ku);window.removeEventListener("click",clickAway);};
   },[undo, redo]);
 
-  useEffect(function(){var el=canvasRef.current;if(!el)return;function onW(e){e.preventDefault();var d=e.deltaY>0?-0.08:0.08;setZoom(function(z){return clamp(z+d,.1,5)})}el.addEventListener("wheel",onW,{passive:false});return function(){el.removeEventListener("wheel",onW)}},[]);
+  useEffect(function(){
+    var el=canvasRef.current;if(!el)return;
+    function onW(e){
+      e.preventDefault();
+      lastPointerRef.current = {x:e.clientX,y:e.clientY};
+      var d=e.deltaY>0?-0.08:0.08;
+      var nextZoom = clamp(zoom+d,.1,5);
+      zoomAtPoint(nextZoom, e.clientX, e.clientY);
+    }
+    function onMove(e){ lastPointerRef.current = {x:e.clientX,y:e.clientY}; }
+    function onLeave(){ lastPointerRef.current = null; }
+    el.addEventListener("wheel",onW,{passive:false});
+    el.addEventListener("mousemove",onMove);
+    el.addEventListener("mouseleave",onLeave);
+    return function(){
+      el.removeEventListener("wheel",onW);
+      el.removeEventListener("mousemove",onMove);
+      el.removeEventListener("mouseleave",onLeave);
+    }
+  },[zoom, pan.x, pan.y]);
 
   var setOv=useCallback(function(sid,lid,props){setOverrides(function(prev){var bo=prev[sid]||{};var lo=bo[lid]||{};var nb=Object.assign({},bo);nb[lid]=Object.assign({},lo,props);var n=Object.assign({},prev);n[sid]=nb;return n})},[]);
   function getOv(sid,lid){
@@ -190,6 +211,65 @@ export default function App(){
     var ov = overrides[sid]?.[lid] || {};
     return Object.assign({}, def, ov);
   }
+  function getLayerForBoard(sid, layer){
+    if(!layer) return null;
+    return Object.assign({}, layer, getOv(sid, layer.id));
+  }
+  function setBoardLayerProp(sid,lid,key,val){
+    setOv(sid,lid,Object.assign({}, {[key]:val}));
+  }
+  function clearBoardLayerOverride(sid,lid){
+    setOverrides(function(prev){
+      var n=Object.assign({},prev);
+      if(n[sid]){
+        var b=Object.assign({},n[sid]);
+        delete b[lid];
+        if(Object.keys(b).length===0) delete n[sid];
+        else n[sid]=b;
+      }
+      return n;
+    });
+  }
+  function resetBoardState(sid){
+    setBoardDefaults(function(prev){
+      var n=Object.assign({},prev);
+      delete n[sid];
+      return n;
+    });
+    setOverrides(function(prev){
+      var n=Object.assign({},prev);
+      delete n[sid];
+      return n;
+    });
+  }
+  function boardHasChanges(sid){
+    var board = overrides[sid];
+    if(!board) return false;
+    return Object.keys(board).some(function(lid){
+      return Object.keys(board[lid] || {}).length > 0;
+    });
+  }
+  function getZoomAnchor(){
+    if(lastPointerRef.current) return lastPointerRef.current;
+    var rect = canvasRef.current ? canvasRef.current.getBoundingClientRect() : null;
+    if(!rect) return {x:0,y:0};
+    return {x: rect.left + (rect.width/2), y: rect.top + (rect.height/2)};
+  }
+  function zoomAtPoint(nextZoom, clientX, clientY){
+    var rect = canvasRef.current ? canvasRef.current.getBoundingClientRect() : null;
+    if(!rect){
+      setZoom(nextZoom);
+      return;
+    }
+    var worldX = (clientX - rect.left - pan.x) / zoom;
+    var worldY = (clientY - rect.top - pan.y) / zoom;
+    setZoom(nextZoom);
+    setPan({
+      x: clientX - rect.left - (worldX * nextZoom),
+      y: clientY - rect.top - (worldY * nextZoom)
+    });
+  }
+  var activeLayerObj = activeBoard && activeBaseLayerObj ? getLayerForBoard(activeBoard, activeBaseLayerObj) : activeBaseLayerObj;
   
   function getElRect(sid,layer){
     var sz=allSizes.find(function(s){return s.id===sid});if(!sz)return{x:0,y:0,w:100,h:100,fs:12};
@@ -313,13 +393,29 @@ export default function App(){
       }
       else{
         var sp = d.sps.find(function(s){return s.id===d.lid}).r;
-        if(d.lid.startsWith("img")){
-          var sz = allSizes.find(function(s){return s.id===d.sid});
-          var newW = Math.max(5, sp.w + pxZ);
-          var newH = newW * (sz.w / sz.h); 
-          setOv(d.sid, d.lid, {w: newW, h: newH});
+        var next = {x:sp.x,y:sp.y,w:sp.w,h:sp.h};
+        var sz = allSizes.find(function(s){return s.id===d.sid});
+        if(d.act==="resize-e" || d.act==="resize-se") next.w = clamp(sp.w + pxZ, 5, 200);
+        if(d.act==="resize-s" || d.act==="resize-se") next.h = clamp(sp.h + pyZ, 3, 200);
+        if(d.act==="resize-w"){
+          next.x = clamp(sp.x + pxZ, -50, 150);
+          next.w = clamp(sp.w - pxZ, 5, 200);
         }
-        else{var sc=1+pxZ/80;setOv(d.sid,d.lid,{fs:Math.round(clamp(sp.fs*sc,6,300))})}
+        if(d.act==="resize-n"){
+          next.y = clamp(sp.y + pyZ, -50, 150);
+          next.h = clamp(sp.h - pyZ, 3, 200);
+        }
+        if(d.lid.startsWith("img")){
+          var sizeFromW = next.w;
+          if(d.act==="resize-n" || d.act==="resize-s") sizeFromW = next.h * (sz.h / sz.w);
+          if(d.act==="resize-se") sizeFromW = Math.max(next.w, next.h * (sz.h / sz.w));
+          sizeFromW = clamp(sizeFromW, 5, 200);
+          next.w = sizeFromW;
+          next.h = sizeFromW * (sz.w / sz.h);
+          if(d.act==="resize-w") next.x = sp.x + (sp.w - next.w);
+          if(d.act==="resize-n") next.y = sp.y + (sp.h - next.h);
+        }
+        setOv(d.sid, d.lid, next);
       }
       setTick(function(c){return c+1});
     }
@@ -353,7 +449,7 @@ export default function App(){
     
     var sps = newSel.map(function(id){ return {id:id, r:Object.assign({}, getElRect(sid, layers.find(function(l){return l.id===id})))}; });
     dragRef.current={sid:sid,lid:lid,act:act,mx:e.clientX,my:e.clientY,bw:rect.width/zoom,bh:rect.height/zoom, sps:sps};
-    document.body.style.cursor=act==="move"?"grabbing":"nwse-resize";
+    document.body.style.cursor=act==="move"?"grabbing":(act==="resize-e"||act==="resize-w"?"ew-resize":act==="resize-n"||act==="resize-s"?"ns-resize":"nwse-resize");
   }
 
   function handleContextMenuLayer(e, sid, lid){
@@ -483,22 +579,6 @@ export default function App(){
     setAssetLibrary(function(prev){ return prev.filter(function(asset){ return asset.id!==assetId; }); });
   }
   
-  function applyTheme(t){
-    saveHistory();
-    setBgColor(t.bg);
-    setLayers(function(prev){
-      return prev.map(function(l){
-        if(l.type==="text"){
-          var n = Object.assign({}, l, {font: t.font});
-          if(l.role==="cta"){ n.bg = t.ctaBg; n.color = t.ctaText; }
-          else { n.color = t.text; }
-          return n;
-        }
-        return l;
-      });
-    });
-  }
-
   function handleAddCustomFont() {
     if(!customFontInput) return;
     var family = customFontInput.trim();
@@ -515,7 +595,7 @@ export default function App(){
   }
 
   // [에이전트 기반 자동 텍스트 요약 시뮬레이션]
-  function runAgenticSummary(lid, currentText) {
+  function runAgenticSummary(sid, lid, currentText) {
     if(!currentText || currentText.trim().length === 0) return;
     setSummarizingId(lid);
     
@@ -531,14 +611,14 @@ export default function App(){
       if(summary.length > currentText.length) summary = currentText.substring(0, 8) + "..";
       if(summary === currentText) summary = summary + " (AI 요약됨)";
       
-      updateLayer(lid, "content", summary);
+      setBoardLayerProp(sid, lid, "content", summary);
       setSummarizingId(null);
     }, 1500);
   }
 
-  function exportOne(sz){return document.fonts.ready.then(function(){var c=document.createElement("canvas");c.width=sz.w;c.height=sz.h;var ctx=c.getContext("2d");ctx.fillStyle=bgColor;ctx.fillRect(0,0,sz.w,sz.h);var sorted=layers.slice().sort(function(a,b){return a.zIndex-b.zIndex});sorted.forEach(function(layer){
-    var isHidden = overrides[sz.id]?.[layer.id]?.hidden;
-    if(isHidden === undefined) isHidden = boardDefaults[sz.id]?.[layer.id]?.hidden;
+  function exportOne(sz){return document.fonts.ready.then(function(){var c=document.createElement("canvas");c.width=sz.w;c.height=sz.h;var ctx=c.getContext("2d");ctx.fillStyle=bgColor;ctx.fillRect(0,0,sz.w,sz.h);var sorted=layers.slice().sort(function(a,b){return a.zIndex-b.zIndex});sorted.forEach(function(baseLayer){
+    var layer = getLayerForBoard(sz.id, baseLayer);
+    var isHidden = layer.hidden;
     if(!layer.visible || isHidden) return;
     var er=getElRect(sz.id,layer);var dx=sz.w*er.x/100,dy=sz.h*er.y/100,dw=sz.w*er.w/100,dh=sz.h*er.h/100;
     
@@ -582,18 +662,16 @@ export default function App(){
   var boardScale=.25;
 
   function renderBoard(sz){
-    var dw=sz.w*boardScale,dh=sz.h*boardScale;var sa=getSafe(sz);var isAct=activeBoard===sz.id;var isExp=!!exportChecked[sz.id];var lo=computeLayout(sz.w,sz.h);
+    var dw=sz.w*boardScale,dh=sz.h*boardScale;var sa=getSafe(sz);var isAct=activeBoard===sz.id;var isExp=!!exportChecked[sz.id];var lo=computeLayout(sz.w,sz.h);var mutated=boardHasChanges(sz.id);
     return React.createElement("div",{key:sz.id,style:{display:"inline-flex",flexDirection:"column",alignItems:"center",gap:6,flexShrink:0,verticalAlign:"top"}},
       React.createElement("label",{style:{display:"flex",alignItems:"center",gap:3,fontSize:9,cursor:"pointer",color:isExp?"#00d4ff":"#555",userSelect:"none"}},React.createElement("input",{type:"checkbox",checked:isExp,onChange:function(){setExportChecked(function(p){var n=Object.assign({},p);n[sz.id]=!p[sz.id];return n})},style:{accentColor:"#00d4ff"}}),"Export"),
       React.createElement("div",{"data-bid":sz.id,
         onMouseDown:function(e){if(e.button!==0 || spaceHeld)return; if(e.target.getAttribute("data-bid")===sz.id){setActiveBoard(sz.id);setActiveEl(null);setSelectedEls([]);}},
         onContextMenu:function(e){handleContextMenuBoard(e, sz.id)},
         style:{width:dw,height:dh,position:"relative",overflow:clipBoard?"hidden":"visible",borderRadius:2,border:isAct?"2px solid #00d4ff":"1px solid #333",background:bgColor,boxSizing:"border-box",boxShadow:isAct?"0 0 12px rgba(0,212,255,.15)":"none"}},
-        layers.filter(function(l){
-          var isHidden = overrides[sz.id]?.[l.id]?.hidden;
-          if(isHidden === undefined) isHidden = boardDefaults[sz.id]?.[l.id]?.hidden;
-          return l.visible && !isHidden;
-        }).map(function(layer){
+        layers.map(function(baseLayer){
+          var layer = getLayerForBoard(sz.id, baseLayer);
+          if(!layer.visible || layer.hidden) return null;
           var er=getElRect(sz.id,layer);var isSel=isAct&&selectedEls.indexOf(layer.id)!==-1;
           
           if(layer.type==="image"){
@@ -612,7 +690,7 @@ export default function App(){
                               React.createElement("span", {style:{color:"rgba(255,255,255,0.3)", fontSize: 10*boardScale, fontWeight:500, pointerEvents:"none", userSelect:"none"}}, "이미지 영역")
                             ),
                 isSel&&React.createElement(React.Fragment,null,
-                  React.createElement("div",{onMouseDown:function(e){beginDrag(e,sz.id,layer.id,"resize")},style:Object.assign({},hSt,{bottom:-4,right:-4,cursor:"nwse-resize"})}),
+                  renderResizeHandles(sz.id,layer.id,beginDrag),
                   React.createElement("div",{onMouseDown:function(e){if(e.button!==0)return; e.stopPropagation();e.preventDefault();saveHistory();setOverrides(function(prev){var n=Object.assign({},prev);if(n[sz.id]){var b=Object.assign({},n[sz.id]);delete b[layer.id];n[sz.id]=b}return n})},style:Object.assign({},hSt,{top:-4,left:-4,cursor:"pointer",background:"#ff4444",fontSize:6,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",width:12,height:12})},"↺")
                 )
               )
@@ -624,7 +702,7 @@ export default function App(){
             React.createElement("div",{id: "layer-"+sz.id+"-"+layer.id, onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")}, onContextMenu:function(e){handleContextMenuLayer(e, sz.id, layer.id)}, style:{position:"relative",display:"inline-block",maxWidth:"100%",outline:isSel?"0.5px solid #00d4ff":"none", pointerEvents:"auto", cursor:spaceHeld?"grab":"move", fontFamily:'"'+layer.font+'","Noto Sans KR",sans-serif',fontSize:dfs,fontWeight:layer.weight,letterSpacing:layer.ls+"em",lineHeight:layer.lh,color:layer.color,textAlign:layer.align}},
               isCta&&layer.bg?React.createElement("span",{style:{background:layer.bg,padding: (6*boardScale)+"px "+(16*boardScale)+"px",borderRadius:4*boardScale,whiteSpace:"nowrap",display:"block"}},layer.content)
               :React.createElement("span",{style:{whiteSpace:"pre-wrap",wordBreak:"keep-all",display:"block",width:"100%"}},layer.content),
-              isSel&&React.createElement("div",{onMouseDown:function(e){beginDrag(e,sz.id,layer.id,"resize")},style:Object.assign({},hSt,{bottom:-4,right:-4,cursor:"nwse-resize"})})
+              isSel&&renderResizeHandles(sz.id,layer.id,beginDrag)
             )
           );
         }),
@@ -640,7 +718,14 @@ export default function App(){
           React.createElement("div",{style:{position:"absolute",left:lo.image.x+"%",top:lo.image.y+"%",width:lo.image.w+"%",height:lo.image.h+"%",border:"1px dashed rgba(100,200,255,.08)",pointerEvents:"none"}})
         )
       ),
-      React.createElement("div",{style:{fontSize:9,fontFamily:"'JetBrains Mono',monospace",textAlign:"center",lineHeight:1.2}},React.createElement("div",{style:{color:isAct?"#00d4ff":"#aaa",fontWeight:600}},sz.w+"×"+sz.h),React.createElement("div",{style:{fontSize:8,color:"#555"}},sz.label))
+      React.createElement("div",{style:{fontSize:9,fontFamily:"'JetBrains Mono',monospace",textAlign:"center",lineHeight:1.2}},
+        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,justifyContent:"center",flexWrap:"wrap"}},
+          React.createElement("span",{style:{color:isAct?"#00d4ff":"#aaa",fontWeight:600}},sz.w+"×"+sz.h),
+          mutated&&React.createElement("span",{style:{color:"#ff5a5a",fontSize:8,fontWeight:700}},"(변형됨)"),
+          mutated&&React.createElement("button",{onClick:function(e){e.stopPropagation();saveHistory();resetBoardState(sz.id);},style:{padding:"1px 6px",border:"1px solid #552222",borderRadius:999,fontSize:8,background:"transparent",color:"#ff7a7a",cursor:"pointer",fontFamily:"inherit"}},"초기화")
+        ),
+        React.createElement("div",{style:{fontSize:8,color:"#555"}},sz.label)
+      )
     );
   }
 
@@ -660,13 +745,13 @@ export default function App(){
       React.createElement("div",{style:{width:1,height:16,background:"#222"}}),
 
       /* Zoom/Pan UI */
-      React.createElement("button",{onClick:function(){setZoom(function(z){return clamp(z-.15,.1,5)})},style:{width:24,height:24,borderRadius:3,border:"1px solid #222",background:"#1a1a1a",color:"#888",cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit"}},"-"),
-      React.createElement("input",{type:"range",min:10,max:300,step:5,value:Math.round(zoom*100),onChange:function(e){setZoom(+e.target.value/100)},style:{width:100,accentColor:"#00d4ff"}}),
-      React.createElement("button",{onClick:function(){setZoom(function(z){return clamp(z+.15,.1,5)})},style:{width:24,height:24,borderRadius:3,border:"1px solid #222",background:"#1a1a1a",color:"#888",cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit"}},"+"),
+      React.createElement("button",{onClick:function(){var anchor=getZoomAnchor();zoomAtPoint(clamp(zoom-.15,.1,5),anchor.x,anchor.y)},style:{width:24,height:24,borderRadius:3,border:"1px solid #222",background:"#1a1a1a",color:"#888",cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit"}},"-"),
+      React.createElement("input",{type:"range",min:10,max:300,step:5,value:Math.round(zoom*100),onChange:function(e){var anchor=getZoomAnchor();zoomAtPoint(+e.target.value/100,anchor.x,anchor.y)},style:{width:100,accentColor:"#00d4ff"}}),
+      React.createElement("button",{onClick:function(){var anchor=getZoomAnchor();zoomAtPoint(clamp(zoom+.15,.1,5),anchor.x,anchor.y)},style:{width:24,height:24,borderRadius:3,border:"1px solid #222",background:"#1a1a1a",color:"#888",cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit"}},"+"),
       React.createElement("span",{style:{fontSize:10,color:"#888",width:36,textAlign:"center",cursor:"pointer",userSelect:"none"},onClick:function(){setZoom(1);setPan({x:0,y:0})}},Math.round(zoom*100)+"%"),
       React.createElement("button",{onClick:function(){setZoom(1);setPan({x:0,y:0})},style:{padding:"3px 6px",borderRadius:3,fontSize:9,border:"1px solid #222",cursor:"pointer",fontFamily:"inherit",background:"#1a1a1a",color:"#666"}},"100%"),
-      React.createElement("button",{onClick:function(){setZoom(.5);setPan({x:0,y:0})},style:{padding:"3px 6px",borderRadius:3,fontSize:9,border:"1px solid #222",cursor:"pointer",fontFamily:"inherit",background:"#1a1a1a",color:"#666"}},"50%"),
-      React.createElement("button",{onClick:function(){setZoom(.25)},style:{padding:"3px 6px",borderRadius:3,fontSize:9,border:"1px solid #222",cursor:"pointer",fontFamily:"inherit",background:"#1a1a1a",color:"#666"}},"25%"),
+      React.createElement("button",{onClick:function(){var anchor=getZoomAnchor();zoomAtPoint(.5,anchor.x,anchor.y)},style:{padding:"3px 6px",borderRadius:3,fontSize:9,border:"1px solid #222",cursor:"pointer",fontFamily:"inherit",background:"#1a1a1a",color:"#666"}},"50%"),
+      React.createElement("button",{onClick:function(){var anchor=getZoomAnchor();zoomAtPoint(.25,anchor.x,anchor.y)},style:{padding:"3px 6px",borderRadius:3,fontSize:9,border:"1px solid #222",cursor:"pointer",fontFamily:"inherit",background:"#1a1a1a",color:"#666"}},"25%"),
 
       React.createElement("div",{style:{width:1,height:16,background:"#222"}}),
       React.createElement("button",{onClick:function(){setClipBoard(!clipBoard)},style:{padding:"3px 8px",borderRadius:3,fontSize:10,border:"none",cursor:"pointer",fontFamily:"inherit",background:clipBoard?"rgba(0,212,255,.12)":"#1a1a1a",color:clipBoard?"#00d4ff":"#555"}}, clipBoard?"✂️ Clip":"👁 Overflow"),
@@ -705,16 +790,6 @@ export default function App(){
           React.createElement("button",{onClick:function(){saveHistory();var id="l"+Date.now();setLayers(function(p){return p.concat([{id:id,type:"text",role:"headline",content:"새 텍스트",font:"Noto Sans KR",size:24,weight:700,ls:0,lh:1.4,color:"#FFFFFF",align:"center",visible:true,zIndex:p.length}])});setActiveEl(id);setSelectedEls([id]);},style:{width:"100%",padding:"4px",border:"1px dashed #333",borderRadius:3,background:"transparent",color:"#444",cursor:"pointer",fontSize:10,fontFamily:"inherit",marginTop:4}},"+ 텍스트 레이어 추가")
         ),
         React.createElement("div",{style:{padding:10,borderBottom:"1px solid #1a1a1a"}},
-          React.createElement("div",{style:sT},"✨ 브랜드 테마 프리셋"),
-          React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:4}},
-            THEMES.map(function(t){
-              return React.createElement("button",{key:t.name,onClick:function(){applyTheme(t)},style:{padding:"6px 4px",border:"1px solid #333",borderRadius:3,background:"#0a0a0a",color:"#ccc",cursor:"pointer",fontSize:9,fontFamily:"inherit",display:"flex",alignItems:"center",gap:4}},
-                React.createElement("div",{style:{width:10,height:10,borderRadius:2,background:t.bg,border:"1px solid #555"}}), t.name
-              )
-            })
-          )
-        ),
-        React.createElement("div",{style:{padding:10,borderBottom:"1px solid #1a1a1a"}},
           React.createElement("div",{style:sT},"🎨 캔버스 배경"),
           React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,marginBottom:4}},React.createElement("input",{type:"color",value:bgColor,onMouseDown:saveHistory,onChange:function(e){setBgColor(e.target.value)},style:{width:24,height:24,border:"none",borderRadius:3,cursor:"pointer",background:"none",padding:0}}),React.createElement("input",{type:"text",value:bgColor,onFocus:saveHistory,onChange:function(e){setBgColor(e.target.value)},style:Object.assign({},iS,{flex:1})})),
           React.createElement("div",{style:{display:"flex",gap:3,marginBottom:6}},["#0f0f0f","#1a1a2e","#A50034","#FFFFFF","#f5f5f5","#0d1b2a","#2d1b69","#1b3a2d"].map(function(c){return React.createElement("div",{key:c,onClick:function(){saveHistory();setBgColor(c)},style:{width:18,height:18,borderRadius:3,background:c,cursor:"pointer",border:bgColor===c?"2px solid #00d4ff":"1px solid #333"}})}))
@@ -733,7 +808,7 @@ export default function App(){
 
       /* CENTER */
       React.createElement("div",{ref:canvasRef,onMouseDown:startPan,style:{flex:1,overflow:"hidden",background:"#080808",position:"relative",cursor:spaceHeld||isPanning?"grab":"default",backgroundImage:"radial-gradient(circle,#181818 1px,transparent 1px)",backgroundSize:"24px 24px"}},
-        React.createElement("div",{style:{transform:"translate("+pan.x+"px,"+pan.y+"px) scale("+zoom+")",transformOrigin:"0 0",display:"flex",flexWrap:"wrap",gap:20,alignItems:"flex-start",padding:40,width:"max-content"}},
+        React.createElement("div",{ref:viewportRef,style:{transform:"translate("+pan.x+"px,"+pan.y+"px) scale("+zoom+")",transformOrigin:"0 0",display:"flex",flexWrap:"wrap",gap:20,alignItems:"flex-start",padding:40,width:"max-content"}},
           visSizes.length===0?React.createElement("div",{style:{color:"#333",fontSize:13,padding:40}},"← 좌측에서 사이즈를 선택하세요"):visSizes.map(function(s){return renderBoard(s)})
         ),
         /* Context Menu (우클릭 메뉴) */
@@ -828,7 +903,7 @@ export default function App(){
                     },min:5,max:200,unit:"%"})
                   )
                 })(),
-                React.createElement("button",{onClick:function(){saveHistory();setOverrides(function(prev){var n=Object.assign({},prev);if(n[activeBoard]){var b=Object.assign({},n[activeBoard]);delete b[activeEl];n[activeBoard]=b}return n})},style:{width:"100%",padding:"4px",border:"1px solid #222",borderRadius:3,background:"#0a0a0a",color:"#555",cursor:"pointer",fontSize:10,fontFamily:"inherit",marginTop:4}},"기본값 복원"),
+                React.createElement("button",{onClick:function(){saveHistory();clearBoardLayerOverride(activeBoard,activeEl)},style:{width:"100%",padding:"4px",border:"1px solid #222",borderRadius:3,background:"#0a0a0a",color:"#555",cursor:"pointer",fontSize:10,fontFamily:"inherit",marginTop:4}},"기본값 복원"),
                 (function(){
                   var isHidden = overrides[activeBoard]?.[activeEl]?.hidden;
                   if(isHidden === undefined) isHidden = boardDefaults[activeBoard]?.[activeEl]?.hidden;
@@ -847,11 +922,11 @@ export default function App(){
             :React.createElement(React.Fragment,null,
               React.createElement("div",{style:{padding:10,borderBottom:"1px solid #1a1a1a"}},
                 React.createElement("div",{style:sT},"✏️ "+((ROLES.find(function(r){return r.key===activeLayerObj.role})||{}).label||"Text")),
-                React.createElement("select",{value:activeLayerObj.role,onFocus:saveHistory,onChange:function(e){updateLayer(activeEl,"role",e.target.value)},style:Object.assign({},iS,{marginBottom:4})},ROLES.map(function(r){return React.createElement("option",{key:r.key,value:r.key},r.label)})),
-                React.createElement("textarea",{value:activeLayerObj.content,onFocus:saveHistory,onChange:function(e){updateLayer(activeEl,"content",e.target.value)},rows:2,style:Object.assign({},iS,{fontFamily:"'Noto Sans KR',sans-serif",fontSize:11,resize:"vertical"})}),
+                React.createElement("select",{value:activeBaseLayerObj.role,onFocus:saveHistory,onChange:function(e){updateLayer(activeEl,"role",e.target.value)},style:Object.assign({},iS,{marginBottom:4})},ROLES.map(function(r){return React.createElement("option",{key:r.key,value:r.key},r.label)})),
+                React.createElement("textarea",{value:activeLayerObj.content,onFocus:saveHistory,onChange:function(e){setBoardLayerProp(activeBoard,activeEl,"content",e.target.value)},rows:2,style:Object.assign({},iS,{fontFamily:"'Noto Sans KR',sans-serif",fontSize:11,resize:"vertical"})}),
                 
                 // 에이전트 요약 기능 UI 버튼
-                React.createElement("button",{onClick:function(){ runAgenticSummary(activeEl, activeLayerObj.content) }, disabled: summarizingId === activeEl, style:{width:"100%",padding:"6px",border:"1px solid #ff00ff",borderRadius:3,background:summarizingId === activeEl ? "#333" : "rgba(255,0,255,0.1)",color:summarizingId === activeEl ? "#aaa" : "#ff00ff",cursor:summarizingId === activeEl ? "default" : "pointer",fontSize:10,fontFamily:"inherit",fontWeight:600, marginTop:6}}, 
+                React.createElement("button",{onClick:function(){ runAgenticSummary(activeBoard, activeEl, activeLayerObj.content) }, disabled: summarizingId === activeEl, style:{width:"100%",padding:"6px",border:"1px solid #ff00ff",borderRadius:3,background:summarizingId === activeEl ? "#333" : "rgba(255,0,255,0.1)",color:summarizingId === activeEl ? "#aaa" : "#ff00ff",cursor:summarizingId === activeEl ? "default" : "pointer",fontSize:10,fontFamily:"inherit",fontWeight:600, marginTop:6}}, 
                   summarizingId === activeEl ? "🤖 에이전트가 최적 카피 분석 중..." : "✨ AI 에이전트 카피 자동 요약"
                 )
               ),
@@ -869,7 +944,7 @@ export default function App(){
                   React.createElement(NI,{label:"H(%)",value:er.h,onFocus:saveHistory,onChange:function(v){setOv(activeBoard,activeEl,{h:clamp(v,3,200)})},min:3,max:200,unit:"%"}),
                   React.createElement(NI,{label:"폰트",value:er.fs,onFocus:saveHistory,onChange:function(v){setOv(activeBoard,activeEl,{fs:clamp(v,6,300)})},min:6,max:300,unit:"px"})
                 )})(),
-                React.createElement("button",{onClick:function(){saveHistory();setOverrides(function(prev){var n=Object.assign({},prev);if(n[activeBoard]){var b=Object.assign({},n[activeBoard]);delete b[activeEl];n[activeBoard]=b}return n})},style:{width:"100%",padding:"4px",border:"1px solid #222",borderRadius:3,background:"#0a0a0a",color:"#555",cursor:"pointer",fontSize:10,fontFamily:"inherit",marginTop:4}},"오버라이드 리셋"),
+                React.createElement("button",{onClick:function(){saveHistory();clearBoardLayerOverride(activeBoard,activeEl)},style:{width:"100%",padding:"4px",border:"1px solid #222",borderRadius:3,background:"#0a0a0a",color:"#555",cursor:"pointer",fontSize:10,fontFamily:"inherit",marginTop:4}},"오버라이드 리셋"),
                 (function(){
                   var isHidden = overrides[activeBoard]?.[activeEl]?.hidden;
                   if(isHidden === undefined) isHidden = boardDefaults[activeBoard]?.[activeEl]?.hidden;
@@ -882,24 +957,24 @@ export default function App(){
               React.createElement("div",{style:{padding:10,borderBottom:"1px solid #1a1a1a"}},
                 React.createElement("div",{style:sT},"🔤 타이포"),
                 React.createElement("div",{style:{display:"flex",gap:4,marginBottom:4}},
-                  React.createElement("select",{value:activeLayerObj.font,onFocus:saveHistory,onChange:function(e){updateLayer(activeEl,"font",e.target.value)},style:Object.assign({},iS,{flex:1})},allFontsList.map(function(f){return React.createElement("option",{key:f.family,value:f.family},f.family)}))
+                  React.createElement("select",{value:activeLayerObj.font,onFocus:saveHistory,onChange:function(e){setBoardLayerProp(activeBoard,activeEl,"font",e.target.value)},style:Object.assign({},iS,{flex:1})},allFontsList.map(function(f){return React.createElement("option",{key:f.family,value:f.family},f.family)}))
                 ),
                 React.createElement("div",{style:{display:"flex",gap:4,marginBottom:8}},
                   React.createElement("input",{type:"text",placeholder:"구글 웹폰트명 (예: Jua)",value:customFontInput,onChange:function(e){setCustomFontInput(e.target.value)},style:Object.assign({},iS,{flex:1})}),
                   React.createElement("button",{onClick:handleAddCustomFont,style:{padding:"3px 8px",background:"#00d4ff",color:"#000",border:"none",borderRadius:3,cursor:"pointer",fontSize:10,fontWeight:"bold"}},"추가")
                 ),
                 React.createElement("div",{style:{display:"flex",gap:6,marginBottom:4}},
-                  React.createElement("div",{style:{flex:1}},React.createElement("div",{style:{fontSize:9,color:"#444",marginBottom:2}},"Size"),React.createElement("input",{type:"number",min:8,max:200,value:activeLayerObj.size,onFocus:saveHistory,onChange:function(e){updateLayer(activeEl,"size",+e.target.value)},style:iS})),
-                  React.createElement("div",{style:{flex:1}},React.createElement("div",{style:{fontSize:9,color:"#444",marginBottom:2}},"Wt"),React.createElement("select",{value:activeLayerObj.weight,onFocus:saveHistory,onChange:function(e){updateLayer(activeEl,"weight",+e.target.value)},style:iS},(allFontsList.find(function(f){return f.family===activeLayerObj.font})||{weights:[400,700]}).weights.map(function(w){return React.createElement("option",{key:w,value:w},w)})))
+                  React.createElement("div",{style:{flex:1}},React.createElement("div",{style:{fontSize:9,color:"#444",marginBottom:2}},"Size"),React.createElement("input",{type:"number",min:8,max:200,value:activeLayerObj.size,onFocus:saveHistory,onChange:function(e){setBoardLayerProp(activeBoard,activeEl,"size",+e.target.value)},style:iS})),
+                  React.createElement("div",{style:{flex:1}},React.createElement("div",{style:{fontSize:9,color:"#444",marginBottom:2}},"Wt"),React.createElement("select",{value:activeLayerObj.weight,onFocus:saveHistory,onChange:function(e){setBoardLayerProp(activeBoard,activeEl,"weight",+e.target.value)},style:iS},(allFontsList.find(function(f){return f.family===activeLayerObj.font})||{weights:[400,700]}).weights.map(function(w){return React.createElement("option",{key:w,value:w},w)})))
                 ),
-                React.createElement("div",{style:{marginBottom:4}},React.createElement("div",{style:{display:"flex",justifyContent:"space-between"}},React.createElement("span",{style:{fontSize:9,color:"#444"}},"자간"),React.createElement("span",{style:{fontSize:9,color:"#666"}},activeLayerObj.ls+"em")),React.createElement("input",{type:"range",min:-.1,max:.3,step:.005,value:activeLayerObj.ls,onMouseDown:saveHistory,onChange:function(e){updateLayer(activeEl,"ls",+e.target.value)},style:{width:"100%",accentColor:"#00d4ff"}})),
-                React.createElement("div",{style:{marginBottom:4}},React.createElement("div",{style:{display:"flex",justifyContent:"space-between"}},React.createElement("span",{style:{fontSize:9,color:"#444"}},"행간"),React.createElement("span",{style:{fontSize:9,color:"#666"}},activeLayerObj.lh)),React.createElement("input",{type:"range",min:.8,max:2.5,step:.05,value:activeLayerObj.lh,onMouseDown:saveHistory,onChange:function(e){updateLayer(activeEl,"lh",+e.target.value)},style:{width:"100%",accentColor:"#00d4ff"}})),
-                React.createElement("div",{style:{display:"flex",gap:2}},[{v:"left",l:"좌측"},{v:"center",l:"중앙"},{v:"right",l:"우측"},{v:"justify",l:"양쪽"}].map(function(a){return React.createElement("button",{key:a.v,onClick:function(){saveHistory();updateLayer(activeEl,"align",a.v)},style:{flex:1,padding:"4px",border:"none",borderRadius:2,cursor:"pointer",fontSize:10,fontFamily:"inherit",background:activeLayerObj.align===a.v?"rgba(0,212,255,.12)":"#0a0a0a",color:activeLayerObj.align===a.v?"#00d4ff":"#444"}},a.l)}))
+                React.createElement("div",{style:{marginBottom:4}},React.createElement("div",{style:{display:"flex",justifyContent:"space-between"}},React.createElement("span",{style:{fontSize:9,color:"#444"}},"자간"),React.createElement("span",{style:{fontSize:9,color:"#666"}},activeLayerObj.ls+"em")),React.createElement("input",{type:"range",min:-.1,max:.3,step:.005,value:activeLayerObj.ls,onMouseDown:saveHistory,onChange:function(e){setBoardLayerProp(activeBoard,activeEl,"ls",+e.target.value)},style:{width:"100%",accentColor:"#00d4ff"}})),
+                React.createElement("div",{style:{marginBottom:4}},React.createElement("div",{style:{display:"flex",justifyContent:"space-between"}},React.createElement("span",{style:{fontSize:9,color:"#444"}},"행간"),React.createElement("span",{style:{fontSize:9,color:"#666"}},activeLayerObj.lh)),React.createElement("input",{type:"range",min:.8,max:2.5,step:.05,value:activeLayerObj.lh,onMouseDown:saveHistory,onChange:function(e){setBoardLayerProp(activeBoard,activeEl,"lh",+e.target.value)},style:{width:"100%",accentColor:"#00d4ff"}})),
+                React.createElement("div",{style:{display:"flex",gap:2}},[{v:"left",l:"좌측"},{v:"center",l:"중앙"},{v:"right",l:"우측"},{v:"justify",l:"양쪽"}].map(function(a){return React.createElement("button",{key:a.v,onClick:function(){saveHistory();setBoardLayerProp(activeBoard,activeEl,"align",a.v)},style:{flex:1,padding:"4px",border:"none",borderRadius:2,cursor:"pointer",fontSize:10,fontFamily:"inherit",background:activeLayerObj.align===a.v?"rgba(0,212,255,.12)":"#0a0a0a",color:activeLayerObj.align===a.v?"#00d4ff":"#444"}},a.l)}))
               ),
               React.createElement("div",{style:{padding:10,borderBottom:"1px solid #1a1a1a"}},
                 React.createElement("div",{style:sT},"🎨 컬러"),
-                React.createElement("div",{style:{display:"flex",gap:6,alignItems:"center",marginBottom:6}},React.createElement("input",{type:"color",value:activeLayerObj.color,onMouseDown:saveHistory,onChange:function(e){updateLayer(activeEl,"color",e.target.value)},style:{width:22,height:22,border:"none",borderRadius:3,cursor:"pointer",padding:0,background:"none"}}),React.createElement("input",{type:"text",value:activeLayerObj.color,onFocus:saveHistory,onChange:function(e){updateLayer(activeEl,"color",e.target.value)},style:Object.assign({},iS,{flex:1})})),
-                activeLayerObj.role==="cta"&&React.createElement("div",{style:{display:"flex",gap:6,alignItems:"center",marginBottom:6}},React.createElement("input",{type:"color",value:activeLayerObj.bg||"#A50034",onMouseDown:saveHistory,onChange:function(e){updateLayer(activeEl,"bg",e.target.value)},style:{width:22,height:22,border:"none",borderRadius:3,cursor:"pointer",padding:0,background:"none"}}),React.createElement("input",{type:"text",value:activeLayerObj.bg||"#A50034",onFocus:saveHistory,onChange:function(e){updateLayer(activeEl,"bg",e.target.value)},style:Object.assign({},iS,{flex:1})}),React.createElement("span",{style:{fontSize:8,color:"#444"}},"CTA")),
+                React.createElement("div",{style:{display:"flex",gap:6,alignItems:"center",marginBottom:6}},React.createElement("input",{type:"color",value:activeLayerObj.color,onMouseDown:saveHistory,onChange:function(e){setBoardLayerProp(activeBoard,activeEl,"color",e.target.value)},style:{width:22,height:22,border:"none",borderRadius:3,cursor:"pointer",padding:0,background:"none"}}),React.createElement("input",{type:"text",value:activeLayerObj.color,onFocus:saveHistory,onChange:function(e){setBoardLayerProp(activeBoard,activeEl,"color",e.target.value)},style:Object.assign({},iS,{flex:1})})),
+                activeLayerObj.role==="cta"&&React.createElement("div",{style:{display:"flex",gap:6,alignItems:"center",marginBottom:6}},React.createElement("input",{type:"color",value:activeLayerObj.bg||"#A50034",onMouseDown:saveHistory,onChange:function(e){setBoardLayerProp(activeBoard,activeEl,"bg",e.target.value)},style:{width:22,height:22,border:"none",borderRadius:3,cursor:"pointer",padding:0,background:"none"}}),React.createElement("input",{type:"text",value:activeLayerObj.bg||"#A50034",onFocus:saveHistory,onChange:function(e){setBoardLayerProp(activeBoard,activeEl,"bg",e.target.value)},style:Object.assign({},iS,{flex:1})}),React.createElement("span",{style:{fontSize:8,color:"#444"}},"CTA")),
                 React.createElement("div",{style:{padding:5,background:"#0a0a0a",borderRadius:3,border:"1px solid #1a1a1a",display:"flex",justifyContent:"space-between",alignItems:"center"}},React.createElement("span",{style:{fontSize:9,color:"#444"}},"대비율"),React.createElement("span",{style:{fontSize:10,fontWeight:700,color:crVal>=4.5?"#4ade80":crVal>=3?"#fbbf24":"#ef4444"}},crVal.toFixed(1)+":1 "+(crVal>=4.5?"✅":crVal>=3?"⚠️":"❌")))
               ),
               React.createElement("div",{style:{padding:10}},
