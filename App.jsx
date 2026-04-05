@@ -78,6 +78,11 @@ function renderResizeHandles(sid,lid,beginDrag,fitLayerToContent){
     React.createElement("div",{onMouseDown:function(e){beginDrag(e,sid,lid,"resize-n")},onDoubleClick:function(e){e.stopPropagation();e.preventDefault();fitLayerToContent(sid,lid);},style:Object.assign({},hSt,handleStyle,{left:"50%",top:-2,transform:"translateX(-50%)",cursor:"ns-resize"})})
   );
 }
+function getLayerDisplayName(layer){
+  if(!layer) return "";
+  if(layer.type==="image") return layer.label || "이미지 영역";
+  return (ROLES.find(function(r){return r.key===layer.role}) || {}).label || layer.role || "텍스트";
+}
 
 export default function App(){
   var fileRef=useRef(null),assetFileRef=useRef(null),imgObjRef=useRef(null),dragRef=useRef(null),canvasRef=useRef(null),viewportRef=useRef(null),panRef=useRef(null),lastPointerRef=useRef(null),editingRef=useRef(null),editingDraftRef=useRef(""),isComposingRef=useRef(false);
@@ -191,11 +196,15 @@ export default function App(){
   }, [editingTextId, activeBoard, activeEl, layers, overrides, boardDefaults]);
 
   useEffect(function(){
-    if(!editingTextId || !activeBoard || !activeEl) return;
+    if(!activeBoard || !activeEl) return;
     function handlePointerDown(e){
       var activeLayerNode = document.getElementById("layer-"+activeBoard+"-"+activeEl);
       if(activeLayerNode && activeLayerNode.contains(e.target)) return;
-      commitEditingText(activeBoard, activeEl, true);
+      if(editingTextId) commitEditingText(activeBoard, activeEl, true);
+      else {
+        setEditingTextId(null);
+        clearLayerSelection();
+      }
     }
     window.addEventListener("mousedown", handlePointerDown, true);
     window.addEventListener("touchstart", handlePointerDown, true);
@@ -221,6 +230,20 @@ export default function App(){
       if(e.code==="Space"&&!e.repeat) {
         var tag = document.activeElement ? document.activeElement.tagName : "";
         if(tag!=="TEXTAREA" && tag!=="INPUT") { e.preventDefault(); setSpaceHeld(true); }
+      }
+      if(e.key==="Escape"){
+        if(editingTextId && activeBoard && activeEl){
+          e.preventDefault();
+          commitEditingText(activeBoard, activeEl, true);
+          if(editingRef.current) editingRef.current.blur();
+          return;
+        }
+        if(activeEl){
+          e.preventDefault();
+          setEditingTextId(null);
+          clearLayerSelection();
+          return;
+        }
       }
       if((e.ctrlKey||e.metaKey)&&e.key==='z'){
         e.preventDefault();
@@ -421,10 +444,11 @@ export default function App(){
     var rw=(tReg.w/100)*sw/sz.w*100;
     var rh=(tReg.h/100)*sh/sz.h*100;
     if(layer.type==="text"){
+      var textContent = String((editingTextId===layer.id && activeBoard===sid && activeEl===layer.id ? editingDraftRef.current : layer.content) || "");
       var c = document.createElement("canvas");
       var ctx = c.getContext("2d");
       ctx.font = layer.weight+" "+fs+'px "'+layer.font+'","Noto Sans KR",sans-serif';
-      var lines = String(layer.content || "").split("\n");
+      var lines = textContent.split("\n");
       var widest = lines.reduce(function(max,line){
         return Math.max(max, ctx.measureText(line || " ").width);
       }, 0);
@@ -830,12 +854,12 @@ export default function App(){
                               React.createElement("img",{src:layer.src,alt:"",draggable:false,style:{width:"100%",height:"100%",objectFit:"cover",transform:"translate("+imgX+"%,"+imgY+"%) scale("+imgS+")",pointerEvents:"none",display:"block"}})
                             )
                           : React.createElement(React.Fragment, null, 
-                              React.createElement("span", {style:{color:"rgba(255,255,255,0.48)", fontSize: Math.max(10, 42*boardScale), fontWeight:700, pointerEvents:"none", userSelect:"none", marginBottom:4}}, "🖼 640×640"),
-                              React.createElement("span", {style:{color:"rgba(255,255,255,0.36)", fontSize: Math.max(8, 30*boardScale), fontWeight:600, pointerEvents:"none", userSelect:"none"}}, "이미지 영역")
+                              null
                             ),
                 isSel&&React.createElement(React.Fragment,null,
                   React.createElement("div",{onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")},style:{position:"absolute",inset:-1,cursor:spaceHeld?"grab":"move",background:"transparent"}}),
                   renderResizeHandles(sz.id,layer.id,beginDrag,fitLayerToContent),
+                  React.createElement("div",{style:{position:"absolute",top:-12,left:0,fontSize:8,color:"rgba(237,242,247,.72)",lineHeight:1,pointerEvents:"none",whiteSpace:"nowrap"}},getLayerDisplayName(layer)),
                   React.createElement("div",{onMouseDown:function(e){if(e.button!==0)return; e.stopPropagation();e.preventDefault();saveHistory();setOverrides(function(prev){var n=Object.assign({},prev);if(n[sz.id]){var b=Object.assign({},n[sz.id]);delete b[layer.id];n[sz.id]=b}return n})},style:Object.assign({},hSt,{top:-1.5,left:-1.5,cursor:"pointer",background:"#ff5a5a",fontSize:5.5,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",width:8,height:8,borderRadius:999,border:"0.5px solid #fff"})},"↺")
                 )
               )
@@ -847,6 +871,7 @@ export default function App(){
             style:{position:"absolute",left:er.x+"%",top:er.y+"%",width:er.w+"%",height:er.h+"%",display:"flex",alignItems:isCta?"center":"flex-start",justifyContent:layer.align==="center"?"center":layer.align==="right"?"flex-end":"flex-start",zIndex:isSel?15:layer.zIndex+2,userSelect:"none",pointerEvents:"none",overflow:"visible"}},
             React.createElement("div",{id: "layer-"+sz.id+"-"+layer.id, onClick:function(e){e.stopPropagation();activateLayerSelection(sz.id,layer.id,[layer.id]);}, onMouseDown:function(e){if(isEditingText && !isCta) return; if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")}, onContextMenu:function(e){handleContextMenuLayer(e, sz.id, layer.id)}, style:{position:"relative",display:"flex",width:"100%",height:"100%",maxWidth:"100%",maxHeight:"100%",border:isSel?"0.5px solid rgba(124,196,255,.92)":"0.5px solid transparent", pointerEvents:"auto", cursor:spaceHeld?"grab":"move", fontFamily:'"'+layer.font+'","Noto Sans KR",sans-serif',fontSize:dfs,fontWeight:layer.weight,letterSpacing:layer.ls+"em",lineHeight:layer.lh,color:layer.color,textAlign:layer.align,alignItems:isCta?"center":"flex-start",justifyContent:layer.align==="center"?"center":layer.align==="right"?"flex-end":"flex-start",boxSizing:"border-box",overflow:"visible"}},
               isSel && !isEditingText && React.createElement("div",{onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")},style:{position:"absolute",inset:-1,cursor:spaceHeld?"grab":"move",background:"transparent"}}),
+              isSel&&React.createElement("div",{style:{position:"absolute",top:-12,left:0,fontSize:8,color:"rgba(237,242,247,.72)",lineHeight:1,pointerEvents:"none",whiteSpace:"nowrap"}},getLayerDisplayName(layer)),
               isEditingText && !isCta
                 ?React.createElement("div",{ref:editingRef,id:"layer-content-"+sz.id+"-"+layer.id,contentEditable:true,suppressContentEditableWarning:true,onClick:function(e){e.stopPropagation();},onMouseDown:function(e){e.stopPropagation();},onCompositionStart:function(){isComposingRef.current=true;},onCompositionEnd:function(e){isComposingRef.current=false;editingDraftRef.current=e.currentTarget.innerText;},onInput:function(e){editingDraftRef.current=e.currentTarget.innerText;},onBlur:function(){if(isComposingRef.current) return; commitEditingText(sz.id,layer.id,false);},onKeyDown:function(e){if(e.key==="Escape"){e.preventDefault();commitEditingText(sz.id,layer.id,true);e.currentTarget.blur();}},style:{minWidth:"100%",minHeight:"100%",whiteSpace:"pre-wrap",wordBreak:"keep-all",display:"block",width:"100%",background:"transparent",outline:"none",overflow:"visible",cursor:"text"}})
                 :isCta&&layer.bg
