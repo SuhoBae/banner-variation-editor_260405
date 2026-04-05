@@ -68,14 +68,14 @@ function getZoomStep(deltaY){
   return clamp(factor, .72, 1.32);
 }
 function NI(p){return React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4,marginBottom:5}},React.createElement("span",{style:{fontSize:10,color:MD.muted,width:48,flexShrink:0}},p.label),React.createElement("input",{type:"number",min:p.min,max:p.max,step:p.step||1,value:Math.round(p.value*100)/100,onFocus:p.onFocus,onChange:function(e){p.onChange(+e.target.value)},style:Object.assign({},iS,{flex:1})}),p.unit&&React.createElement("span",{style:{fontSize:9,color:MD.muted,width:16}},p.unit))}
-function renderResizeHandles(sid,lid,beginDrag){
-  var dotStyle = {width:3,height:3,borderRadius:999,background:MD.primary,border:"0.5px solid #fff"};
+function renderResizeHandles(sid,lid,beginDrag,fitLayerToContent){
+  var handleStyle = {width:4,height:4,borderRadius:1,background:MD.primary,border:"0.5px solid #fff"};
   return React.createElement(React.Fragment,null,
-    React.createElement("div",{onMouseDown:function(e){beginDrag(e,sid,lid,"resize-se")},style:Object.assign({},hSt,dotStyle,{bottom:-1.5,right:-1.5,cursor:"nwse-resize"})}),
-    React.createElement("div",{onMouseDown:function(e){beginDrag(e,sid,lid,"resize-e")},style:Object.assign({},hSt,dotStyle,{top:"50%",right:-1.5,transform:"translateY(-50%)",cursor:"ew-resize"})}),
-    React.createElement("div",{onMouseDown:function(e){beginDrag(e,sid,lid,"resize-w")},style:Object.assign({},hSt,dotStyle,{top:"50%",left:-1.5,transform:"translateY(-50%)",cursor:"ew-resize"})}),
-    React.createElement("div",{onMouseDown:function(e){beginDrag(e,sid,lid,"resize-s")},style:Object.assign({},hSt,dotStyle,{left:"50%",bottom:-1.5,transform:"translateX(-50%)",cursor:"ns-resize"})}),
-    React.createElement("div",{onMouseDown:function(e){beginDrag(e,sid,lid,"resize-n")},style:Object.assign({},hSt,dotStyle,{left:"50%",top:-1.5,transform:"translateX(-50%)",cursor:"ns-resize"})})
+    React.createElement("div",{onMouseDown:function(e){beginDrag(e,sid,lid,"resize-se")},onDoubleClick:function(e){e.stopPropagation();e.preventDefault();fitLayerToContent(sid,lid);},style:Object.assign({},hSt,handleStyle,{bottom:-2,right:-2,cursor:"nwse-resize"})}),
+    React.createElement("div",{onMouseDown:function(e){beginDrag(e,sid,lid,"resize-e")},onDoubleClick:function(e){e.stopPropagation();e.preventDefault();fitLayerToContent(sid,lid);},style:Object.assign({},hSt,handleStyle,{top:"50%",right:-2,transform:"translateY(-50%)",cursor:"ew-resize"})}),
+    React.createElement("div",{onMouseDown:function(e){beginDrag(e,sid,lid,"resize-w")},onDoubleClick:function(e){e.stopPropagation();e.preventDefault();fitLayerToContent(sid,lid);},style:Object.assign({},hSt,handleStyle,{top:"50%",left:-2,transform:"translateY(-50%)",cursor:"ew-resize"})}),
+    React.createElement("div",{onMouseDown:function(e){beginDrag(e,sid,lid,"resize-s")},onDoubleClick:function(e){e.stopPropagation();e.preventDefault();fitLayerToContent(sid,lid);},style:Object.assign({},hSt,handleStyle,{left:"50%",bottom:-2,transform:"translateX(-50%)",cursor:"ns-resize"})}),
+    React.createElement("div",{onMouseDown:function(e){beginDrag(e,sid,lid,"resize-n")},onDoubleClick:function(e){e.stopPropagation();e.preventDefault();fitLayerToContent(sid,lid);},style:Object.assign({},hSt,handleStyle,{left:"50%",top:-2,transform:"translateX(-50%)",cursor:"ns-resize"})})
   );
 }
 
@@ -95,7 +95,7 @@ export default function App(){
     {id:"img1",type:"image",label:"메인 비주얼",src:null,imgW:0,imgH:0,visible:true,zIndex:0},
     {id:"l1",type:"text",role:"headline",content:"여름맞이 최대 50% 할인",font:"Noto Sans KR",size:48,weight:800,ls:-.02,lh:1.25,color:"#FFFFFF",align:"center",visible:true,zIndex:1},
     {id:"l2",type:"text",role:"subheadline",content:"LG 베스트샵 전 제품",font:"Noto Sans KR",size:24,weight:500,ls:0,lh:1.4,color:"#CCCCCC",align:"center",visible:true,zIndex:2},
-    {id:"l3",type:"text",role:"cta",content:"자세히 보기 →",font:"Noto Sans KR",size:20,weight:700,ls:.02,lh:1,color:"#FFFFFF",align:"center",visible:true,bg:"#A50034",zIndex:3},
+    {id:"l3",type:"text",role:"cta",content:"자세히 보기",font:"Noto Sans KR",size:20,weight:700,ls:.02,lh:1,color:"#FFFFFF",align:"center",visible:true,bg:"#A50034",zIndex:3},
   ]);var layers=_layers[0],setLayers=_layers[1];
   
   var _ov=useState({});var overrides=_ov[0],setOverrides=_ov[1];
@@ -167,6 +167,7 @@ export default function App(){
   var _ab=useState(null);var activeBoard=_ab[0],setActiveBoard=_ab[1];
   var _selEls=useState([]);var selectedEls=_selEls[0],setSelectedEls=_selEls[1];
   var _ae=useState(null);var activeEl=_ae[0],setActiveEl=_ae[1];
+  var _editing=useState(null);var editingTextId=_editing[0],setEditingTextId=_editing[1];
   var _ec=useState({});var exportChecked=_ec[0],setExportChecked=_ec[1];
   var _tk=useState(0);var setTick=_tk[1];
   
@@ -234,6 +235,14 @@ export default function App(){
     if(!layer) return null;
     return Object.assign({}, layer, getOv(sid, layer.id));
   }
+  function activateLayerSelection(sid,lid,ids){
+    var base = layers.find(function(l){return l.id===lid});
+    var nextIds = ids || [lid];
+    setActiveBoard(sid);
+    setSelectedEls(nextIds);
+    setActiveEl(lid);
+    setEditingTextId(base && base.type==="text" && base.role!=="cta" && nextIds.length===1 ? lid : null);
+  }
   function setBoardLayerProp(sid,lid,key,val){
     setOv(sid,lid,Object.assign({}, {[key]:val}));
   }
@@ -294,7 +303,41 @@ export default function App(){
     if(activeBoard===sid && activeEl===lid){
       setActiveEl(null);
       setSelectedEls([]);
+      setEditingTextId(null);
     }
+  }
+  function fitLayerToContent(sid,lid){
+    var baseLayer = layers.find(function(l){return l.id===lid});
+    if(!baseLayer || baseLayer.type!=="text") return;
+    saveHistory();
+    var layer = getLayerForBoard(sid, baseLayer);
+    var sz = allSizes.find(function(s){return s.id===sid});
+    if(!sz) return;
+    var er = getElRect(sid, layer);
+    var c = document.createElement("canvas");
+    var ctx = c.getContext("2d");
+    ctx.font = layer.weight+" "+er.fs+'px "'+layer.font+'","Noto Sans KR",sans-serif';
+    var nextW = er.w, nextH = er.h;
+    if(layer.role==="cta" && layer.bg){
+      var met = ctx.measureText(layer.content || "");
+      var pH = er.fs * 0.8;
+      var pV = er.fs * 0.3;
+      nextW = ((met.width + pH * 2) / sz.w) * 100;
+      nextH = (((er.fs * 1.2) + pV * 2) / sz.h) * 100;
+    } else {
+      var lines = String(layer.content || "").split("\n");
+      var widest = lines.reduce(function(max,line){
+        return Math.max(max, ctx.measureText(line || " ").width);
+      }, 0);
+      nextW = (widest / sz.w) * 100;
+      nextH = ((Math.max(lines.length,1) * er.fs * layer.lh) / sz.h) * 100;
+    }
+    nextW = clamp(nextW, 2, 200);
+    nextH = clamp(nextH, 2, 200);
+    var nextX = er.x;
+    if(layer.align==="center") nextX = er.x + ((er.w - nextW) / 2);
+    if(layer.align==="right") nextX = er.x + (er.w - nextW);
+    setOv(sid,lid,{x:nextX,w:nextW,h:nextH});
   }
   
   function getElRect(sid,layer){
@@ -459,6 +502,7 @@ export default function App(){
   function beginDrag(e,sid,lid,act){
     if(e.button !== 0 || spaceHeld) return; // 좌클릭이 아니거나 스페이스바 누른 상태면 캔버스 패닝으로 넘김
     e.stopPropagation();e.preventDefault();
+    setEditingTextId(null);
     saveHistory(); 
     var el=e.target;while(el&&!el.getAttribute("data-bid"))el=el.parentElement;if(!el)return;
     var rect=el.getBoundingClientRect();
@@ -487,6 +531,7 @@ export default function App(){
   function handleContextMenuLayer(e, sid, lid){
     if(spaceHeld) return;
     e.preventDefault(); e.stopPropagation();
+    setEditingTextId(null);
     setActiveBoard(sid); setActiveEl(lid); setSelectedEls([lid]);
     setCtxMenu({x: e.clientX, y: e.clientY, sid: sid, lid: lid});
   }
@@ -495,7 +540,7 @@ export default function App(){
     if(spaceHeld) return;
     e.preventDefault(); e.stopPropagation();
     if(e.target.getAttribute("data-bid")===sid){
-      setActiveBoard(sid); setActiveEl(null); setSelectedEls([]);
+      setActiveBoard(sid); setActiveEl(null); setSelectedEls([]); setEditingTextId(null);
       setCtxMenu({x: e.clientX, y: e.clientY, sid: sid, lid: null});
     }
   }
@@ -698,7 +743,7 @@ export default function App(){
     return React.createElement("div",{key:sz.id,style:{display:"inline-flex",flexDirection:"column",alignItems:"center",gap:6,flexShrink:0,verticalAlign:"top"}},
       React.createElement("label",{style:{display:"flex",alignItems:"center",gap:3,fontSize:9,cursor:"pointer",color:isExp?"#00d4ff":"#555",userSelect:"none"}},React.createElement("input",{type:"checkbox",checked:isExp,onChange:function(){setExportChecked(function(p){var n=Object.assign({},p);n[sz.id]=!p[sz.id];return n})},style:{accentColor:"#00d4ff"}}),"Export"),
       React.createElement("div",{"data-bid":sz.id,
-        onMouseDown:function(e){if(e.button!==0 || spaceHeld)return; if(e.target.getAttribute("data-bid")===sz.id){setActiveBoard(sz.id);setActiveEl(null);setSelectedEls([]);}},
+        onMouseDown:function(e){if(e.button!==0 || spaceHeld)return; if(e.target.getAttribute("data-bid")===sz.id){setActiveBoard(sz.id);setActiveEl(null);setSelectedEls([]);setEditingTextId(null);}},
         onContextMenu:function(e){handleContextMenuBoard(e, sz.id)},
         style:{width:dw,height:dh,position:"relative",overflow:clipBoard?"hidden":"visible",borderRadius:2,border:isAct?"2px solid #00d4ff":"1px solid #333",background:bgColor,boxSizing:"border-box",boxShadow:isAct?"0 0 12px rgba(0,212,255,.15)":"none"}},
         layers.map(function(baseLayer){
@@ -713,32 +758,34 @@ export default function App(){
             
             return React.createElement("div",{key:layer.id,
               style:{position:"absolute",left:er.x+"%",top:er.y+"%",width:er.w+"%",height:er.h+"%",zIndex:isSel?15:layer.zIndex+2,display:"flex",alignItems:"center",justifyContent:"center",pointerEvents:"none"}}, 
-              React.createElement("div", {id: "layer-"+sz.id+"-"+layer.id, onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")}, onContextMenu:function(e){handleContextMenuLayer(e, sz.id, layer.id)}, style:{position:"relative", display:"flex", width:"100%", height:"100%", maxWidth:"100%", maxHeight:"100%", border:isSel?"0.5px solid rgba(124,196,255,.92)":(layer.src?"0.5px solid transparent":"0.5px dashed rgba(255,255,255,0.15)"), background:layer.src?"repeating-conic-gradient(#1a1a1a 0% 25%, #151515 0% 50%) 0 0 / 8px 8px" : "rgba(255,255,255,0.03)", pointerEvents:"auto", cursor:spaceHeld?"grab":"move", alignItems:"center", justifyContent:"center", flexDirection:"column", boxSizing:"border-box"}},
+              React.createElement("div", {id: "layer-"+sz.id+"-"+layer.id, onClick:function(e){e.stopPropagation();activateLayerSelection(sz.id,layer.id,[layer.id]);}, onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")}, onContextMenu:function(e){handleContextMenuLayer(e, sz.id, layer.id)}, style:{position:"relative", display:"flex", width:"100%", height:"100%", maxWidth:"100%", maxHeight:"100%", border:isSel?"0.5px solid rgba(124,196,255,.92)":(layer.src?"0.5px solid transparent":"0.5px dashed rgba(255,255,255,0.15)"), background:layer.src?"repeating-conic-gradient(#1a1a1a 0% 25%, #151515 0% 50%) 0 0 / 8px 8px" : "rgba(255,255,255,0.03)", pointerEvents:"auto", cursor:spaceHeld?"grab":"move", alignItems:"center", justifyContent:"center", flexDirection:"column", boxSizing:"border-box"}},
                 layer.src ? React.createElement("div", {style:{width:"100%", height:"100%", overflow:"hidden", borderRadius:2}}, 
                               React.createElement("img",{src:layer.src,alt:"",draggable:false,style:{width:"100%",height:"100%",objectFit:"cover",transform:"translate("+imgX+"%,"+imgY+"%) scale("+imgS+")",pointerEvents:"none",display:"block"}})
                             )
                           : React.createElement(React.Fragment, null, 
-                              React.createElement("span", {style:{color:"rgba(255,255,255,0.4)", fontSize: 13*boardScale, fontWeight:700, pointerEvents:"none", userSelect:"none", marginBottom:4}}, "🖼 640×640"),
-                              React.createElement("span", {style:{color:"rgba(255,255,255,0.3)", fontSize: 10*boardScale, fontWeight:500, pointerEvents:"none", userSelect:"none"}}, "이미지 영역")
+                              React.createElement("span", {style:{color:"rgba(255,255,255,0.48)", fontSize: Math.max(10, 42*boardScale), fontWeight:700, pointerEvents:"none", userSelect:"none", marginBottom:4}}, "🖼 640×640"),
+                              React.createElement("span", {style:{color:"rgba(255,255,255,0.36)", fontSize: Math.max(8, 30*boardScale), fontWeight:600, pointerEvents:"none", userSelect:"none"}}, "이미지 영역")
                             ),
                 isSel&&React.createElement(React.Fragment,null,
-                  renderResizeHandles(sz.id,layer.id,beginDrag),
+                  React.createElement("div",{onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")},style:{position:"absolute",inset:-1,cursor:spaceHeld?"grab":"move",background:"transparent"}}),
+                  renderResizeHandles(sz.id,layer.id,beginDrag,fitLayerToContent),
                   React.createElement("div",{onMouseDown:function(e){if(e.button!==0)return; e.stopPropagation();e.preventDefault();saveHistory();setOverrides(function(prev){var n=Object.assign({},prev);if(n[sz.id]){var b=Object.assign({},n[sz.id]);delete b[layer.id];n[sz.id]=b}return n})},style:Object.assign({},hSt,{top:-1.5,left:-1.5,cursor:"pointer",background:"#ff5a5a",fontSize:5.5,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",width:8,height:8,borderRadius:999,border:"0.5px solid #fff"})},"↺")
                 )
               )
             );
           }
           var dfs=er.fs*boardScale;if(dfs<=0)return null;var isCta=layer.role==="cta"; 
-          var isEditingText = isSel && activeBoard===sz.id && activeEl===layer.id;
+          var isEditingText = isSel && activeBoard===sz.id && activeEl===layer.id && editingTextId===layer.id;
           return React.createElement("div",{key:layer.id,
-            style:{position:"absolute",left:er.x+"%",top:er.y+"%",width:er.w+"%",height:er.h+"%",display:"flex",alignItems:isCta?"center":"flex-start",justifyContent:layer.align==="center"?"center":layer.align==="right"?"flex-end":"flex-start",zIndex:isSel?15:layer.zIndex+2,userSelect:"none",pointerEvents:"none"}},
-            React.createElement("div",{id: "layer-"+sz.id+"-"+layer.id, onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")}, onContextMenu:function(e){handleContextMenuLayer(e, sz.id, layer.id)}, style:{position:"relative",display:"flex",width:"100%",height:"100%",maxWidth:"100%",maxHeight:"100%",border:isSel?"0.5px solid rgba(124,196,255,.92)":"0.5px solid transparent", pointerEvents:"auto", cursor:spaceHeld?"grab":"move", fontFamily:'"'+layer.font+'","Noto Sans KR",sans-serif',fontSize:dfs,fontWeight:layer.weight,letterSpacing:layer.ls+"em",lineHeight:layer.lh,color:layer.color,textAlign:layer.align,alignItems:isCta?"center":"flex-start",justifyContent:layer.align==="center"?"center":layer.align==="right"?"flex-end":"flex-start",boxSizing:"border-box"}},
+            style:{position:"absolute",left:er.x+"%",top:er.y+"%",width:er.w+"%",height:er.h+"%",display:"flex",alignItems:isCta?"center":"flex-start",justifyContent:layer.align==="center"?"center":layer.align==="right"?"flex-end":"flex-start",zIndex:isSel?15:layer.zIndex+2,userSelect:"none",pointerEvents:"none",overflow:"visible"}},
+            React.createElement("div",{id: "layer-"+sz.id+"-"+layer.id, onClick:function(e){e.stopPropagation();activateLayerSelection(sz.id,layer.id,[layer.id]);}, onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")}, onContextMenu:function(e){handleContextMenuLayer(e, sz.id, layer.id)}, style:{position:"relative",display:"flex",width:"100%",height:"100%",maxWidth:"100%",maxHeight:"100%",border:isSel?"0.5px solid rgba(124,196,255,.92)":"0.5px solid transparent", pointerEvents:"auto", cursor:spaceHeld?"grab":"move", fontFamily:'"'+layer.font+'","Noto Sans KR",sans-serif',fontSize:dfs,fontWeight:layer.weight,letterSpacing:layer.ls+"em",lineHeight:layer.lh,color:layer.color,textAlign:layer.align,alignItems:isCta?"center":"flex-start",justifyContent:layer.align==="center"?"center":layer.align==="right"?"flex-end":"flex-start",boxSizing:"border-box",overflow:"visible"}},
+              isSel&&React.createElement("div",{onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")},style:{position:"absolute",inset:-1,cursor:spaceHeld?"grab":"move",background:"transparent"}}),
               isEditingText && !isCta
-                ?React.createElement("textarea",{value:layer.content,autoFocus:true,onChange:function(e){setBoardLayerProp(sz.id,layer.id,"content",e.target.value)},onMouseDown:function(e){e.stopPropagation();},rows:Math.max(2, String(layer.content).split("\n").length),style:{width:"100%",height:"100%",background:"rgba(7,12,18,.7)",border:"none",borderRadius:0,padding:"1px 2px",color:layer.color,font:"inherit",letterSpacing:"inherit",lineHeight:"inherit",resize:"none",outline:"none",boxSizing:"border-box"}})
+                ?React.createElement("div",{id:"layer-content-"+sz.id+"-"+layer.id,contentEditable:true,suppressContentEditableWarning:true,onMouseDown:function(e){e.stopPropagation();},onInput:function(e){setBoardLayerProp(sz.id,layer.id,"content",e.currentTarget.innerText.replace(/\r/g,""));},onBlur:function(){setEditingTextId(null);},onKeyDown:function(e){if(e.key==="Escape"){e.preventDefault();e.currentTarget.blur();}},style:{minWidth:"100%",minHeight:"100%",whiteSpace:"pre-wrap",wordBreak:"keep-all",display:"block",width:"100%",background:"transparent",outline:"none",overflow:"visible"}},layer.content)
                 :isCta&&layer.bg
-                  ?React.createElement("span",{style:{background:layer.bg,padding: (6*boardScale)+"px "+(16*boardScale)+"px",borderRadius:999,whiteSpace:"nowrap",display:"block",boxShadow:"0 1px 3px rgba(0,0,0,.12)"}} ,layer.content)
-                  :React.createElement("span",{style:{whiteSpace:"pre-wrap",wordBreak:"keep-all",display:"block",width:"100%"}},layer.content),
-              isSel&&renderResizeHandles(sz.id,layer.id,beginDrag)
+                  ?React.createElement("span",{id:"layer-content-"+sz.id+"-"+layer.id,style:{background:layer.bg,padding:(6*boardScale)+"px "+(16*boardScale)+"px",borderRadius:999,whiteSpace:"nowrap",display:"inline-flex",alignItems:"center",justifyContent:"center",lineHeight:1,boxShadow:"0 1px 3px rgba(0,0,0,.12)"}} ,layer.content)
+                  :React.createElement("span",{id:"layer-content-"+sz.id+"-"+layer.id,style:{whiteSpace:"pre-wrap",wordBreak:"keep-all",display:"block",width:"100%",overflow:"visible"}},layer.content),
+              isSel&&renderResizeHandles(sz.id,layer.id,beginDrag,fitLayerToContent)
             )
           );
         }),
@@ -814,9 +861,9 @@ export default function App(){
             return React.createElement("div",{key:l.id,onClick:function(e){
                 if(e.shiftKey) {
                   var newSel = isSelected ? selectedEls.filter(function(x){return x!==l.id}) : selectedEls.concat([l.id]);
-                  setSelectedEls(newSel); setActiveEl(newSel.length>0 ? newSel[newSel.length-1] : null);
+                  setSelectedEls(newSel); setActiveEl(newSel.length>0 ? newSel[newSel.length-1] : null); setEditingTextId(newSel.length===1 && boardLayer.type==="text" && boardLayer.role!=="cta" ? l.id : null);
                 } else {
-                  setSelectedEls([l.id]); setActiveEl(l.id);
+                  setSelectedEls([l.id]); setActiveEl(l.id); setEditingTextId(boardLayer.type==="text" && boardLayer.role!=="cta" ? l.id : null);
                 }
               },style:{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",borderRadius:14,cursor:"pointer",marginBottom:4,background:isSelected?MD.primarySoft:MD.surface2,border:isSelected?"1px solid rgba(26,115,232,.18)":"1px solid transparent",opacity:layerHidden?0.55:1}},
               React.createElement("input",{type:"checkbox",checked:!layerHidden,onChange:function(e){e.stopPropagation();saveHistory(); if(activeBoard) setOv(activeBoard,l.id,{hidden:layerHidden?false:true}); else updateLayer(l.id,"visible",!l.visible)},style:{accentColor:MD.primary}}),
