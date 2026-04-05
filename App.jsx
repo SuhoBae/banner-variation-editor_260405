@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+﻿import React, { useState, useRef, useEffect, useCallback } from "react";
 
 var FONTS = [
   {family:"Noto Sans KR",weights:[300,400,500,700,800,900]},{family:"Nanum Gothic",weights:[400,700,800]},
@@ -46,30 +46,36 @@ function computeLayout(w,h){
 
 function layoutRegion(lo,role){if(role==="headline")return lo.headline;if(role==="subheadline")return lo.subheadline;if(role==="cta")return lo.cta;if(role==="legal")return{x:lo.cta.x,y:lo.cta.y+lo.cta.h+1,w:lo.cta.w,h:8};return lo.headline}
 var MD = {
-  bg:"#f3f6fb",
-  surface:"#ffffff",
-  surface2:"#f8fafc",
-  surface3:"#eef3f8",
-  line:"#d6dde8",
-  text:"#1f2937",
-  muted:"#667085",
-  primary:"#1a73e8",
-  primarySoft:"#e8f0fe",
-  danger:"#d93025",
-  dangerSoft:"#fce8e6",
-  shadow:"0 1px 2px rgba(15,23,42,.08), 0 8px 24px rgba(15,23,42,.06)"
+  bg:"#0b1017",
+  surface:"#121821",
+  surface2:"#18212c",
+  surface3:"#1f2a36",
+  line:"#2a3746",
+  text:"#edf2f7",
+  muted:"#94a3b8",
+  primary:"#7cc4ff",
+  primarySoft:"rgba(124,196,255,.14)",
+  danger:"#ff7b72",
+  dangerSoft:"rgba(255,123,114,.14)",
+  shadow:"0 1px 2px rgba(0,0,0,.35), 0 12px 28px rgba(0,0,0,.28)"
 };
-var iS={background:MD.surface,border:"1px solid "+MD.line,borderRadius:12,padding:"8px 10px",color:MD.text,fontSize:12,fontFamily:"Roboto,'Noto Sans KR',sans-serif",width:"100%",boxSizing:"border-box",boxShadow:"inset 0 1px 0 rgba(255,255,255,.8)"};
+var iS={background:MD.surface2,border:"1px solid "+MD.line,borderRadius:12,padding:"8px 10px",color:MD.text,fontSize:12,fontFamily:"Roboto,'Noto Sans KR',sans-serif",width:"100%",boxSizing:"border-box",boxShadow:"inset 0 1px 0 rgba(255,255,255,.03)"};
 var sT={fontSize:11,color:MD.muted,textTransform:"uppercase",letterSpacing:".08em",marginBottom:10,fontWeight:700};
 var hSt={background:MD.primary,position:"absolute",zIndex:30,boxShadow:"0 1px 3px rgba(26,115,232,.35)"};
-function NI(p){return React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4,marginBottom:5}},React.createElement("span",{style:{fontSize:10,color:"#555",width:48,flexShrink:0}},p.label),React.createElement("input",{type:"number",min:p.min,max:p.max,step:p.step||1,value:Math.round(p.value*100)/100,onFocus:p.onFocus,onChange:function(e){p.onChange(+e.target.value)},style:Object.assign({},iS,{flex:1})}),p.unit&&React.createElement("span",{style:{fontSize:9,color:"#444",width:16}},p.unit))}
+function getZoomStep(deltaY){
+  var magnitude = Math.min(Math.abs(deltaY), 160);
+  var factor = Math.exp((-deltaY / 100) * 0.16 * (magnitude / 40));
+  return clamp(factor, .72, 1.32);
+}
+function NI(p){return React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4,marginBottom:5}},React.createElement("span",{style:{fontSize:10,color:MD.muted,width:48,flexShrink:0}},p.label),React.createElement("input",{type:"number",min:p.min,max:p.max,step:p.step||1,value:Math.round(p.value*100)/100,onFocus:p.onFocus,onChange:function(e){p.onChange(+e.target.value)},style:Object.assign({},iS,{flex:1})}),p.unit&&React.createElement("span",{style:{fontSize:9,color:MD.muted,width:16}},p.unit))}
 function renderResizeHandles(sid,lid,beginDrag){
+  var dotStyle = {width:3,height:3,borderRadius:999,background:MD.primary,border:"0.5px solid #fff"};
   return React.createElement(React.Fragment,null,
-    React.createElement("div",{onMouseDown:function(e){beginDrag(e,sid,lid,"resize-se")},style:Object.assign({},hSt,{width:8,height:8,borderRadius:999,bottom:-4,right:-4,cursor:"nwse-resize"})}),
-    React.createElement("div",{onMouseDown:function(e){beginDrag(e,sid,lid,"resize-e")},style:Object.assign({},hSt,{width:2,height:18,top:"50%",right:-1,transform:"translateY(-50%)",cursor:"ew-resize"})}),
-    React.createElement("div",{onMouseDown:function(e){beginDrag(e,sid,lid,"resize-w")},style:Object.assign({},hSt,{width:2,height:18,top:"50%",left:-1,transform:"translateY(-50%)",cursor:"ew-resize"})}),
-    React.createElement("div",{onMouseDown:function(e){beginDrag(e,sid,lid,"resize-s")},style:Object.assign({},hSt,{width:18,height:2,left:"50%",bottom:-1,transform:"translateX(-50%)",cursor:"ns-resize"})}),
-    React.createElement("div",{onMouseDown:function(e){beginDrag(e,sid,lid,"resize-n")},style:Object.assign({},hSt,{width:18,height:2,left:"50%",top:-1,transform:"translateX(-50%)",cursor:"ns-resize"})})
+    React.createElement("div",{onMouseDown:function(e){beginDrag(e,sid,lid,"resize-se")},style:Object.assign({},hSt,dotStyle,{bottom:-1.5,right:-1.5,cursor:"nwse-resize"})}),
+    React.createElement("div",{onMouseDown:function(e){beginDrag(e,sid,lid,"resize-e")},style:Object.assign({},hSt,dotStyle,{top:"50%",right:-1.5,transform:"translateY(-50%)",cursor:"ew-resize"})}),
+    React.createElement("div",{onMouseDown:function(e){beginDrag(e,sid,lid,"resize-w")},style:Object.assign({},hSt,dotStyle,{top:"50%",left:-1.5,transform:"translateY(-50%)",cursor:"ew-resize"})}),
+    React.createElement("div",{onMouseDown:function(e){beginDrag(e,sid,lid,"resize-s")},style:Object.assign({},hSt,dotStyle,{left:"50%",bottom:-1.5,transform:"translateX(-50%)",cursor:"ns-resize"})}),
+    React.createElement("div",{onMouseDown:function(e){beginDrag(e,sid,lid,"resize-n")},style:Object.assign({},hSt,dotStyle,{left:"50%",top:-1.5,transform:"translateX(-50%)",cursor:"ns-resize"})})
   );
 }
 
@@ -203,8 +209,7 @@ export default function App(){
     function onW(e){
       e.preventDefault();
       lastPointerRef.current = {x:e.clientX,y:e.clientY};
-      var d=e.deltaY>0?-0.08:0.08;
-      var nextZoom = clamp(zoom+d,.1,5);
+      var nextZoom = clamp(zoom * getZoomStep(e.deltaY),.1,5);
       zoomAtPoint(nextZoom, e.clientX, e.clientY);
     }
     function onMove(e){ lastPointerRef.current = {x:e.clientX,y:e.clientY}; }
@@ -403,28 +408,30 @@ export default function App(){
 
   useEffect(function(){
     function onMove(e){
-      var p=panRef.current;if(p&&p.type==="pan"){e.preventDefault();setPan({x:p.sx+(e.clientX-p.mx),y:p.sy+(e.clientY-p.my)});return}
+      var p=panRef.current;if(p&&p.type==="pan"){e.preventDefault();setPan({x:p.sx+((e.clientX-p.mx)*(p.boost||1)),y:p.sy+((e.clientY-p.my)*(p.boost||1))});return}
       var d=dragRef.current;if(!d)return;e.preventDefault();
       var dx=e.clientX-d.mx,dy=e.clientY-d.my;
       var pxZ=(dx/(d.bw*zoom))*100,pyZ=(dy/(d.bh*zoom))*100;
       if(d.act==="move"){
         d.sps.forEach(function(obj){
-          setOv(d.sid, obj.id, {x: clamp(obj.r.x+pxZ,-50,150), y: clamp(obj.r.y+pyZ,-50,150)});
+          setOv(d.sid, obj.id, {x: clamp(obj.r.x+(pxZ*1.6),-50,150), y: clamp(obj.r.y+(pyZ*1.6),-50,150)});
         });
       }
       else{
         var sp = d.sps.find(function(s){return s.id===d.lid}).r;
         var next = {x:sp.x,y:sp.y,w:sp.w,h:sp.h};
         var sz = allSizes.find(function(s){return s.id===d.sid});
-        if(d.act==="resize-e" || d.act==="resize-se") next.w = clamp(sp.w + pxZ, 5, 200);
-        if(d.act==="resize-s" || d.act==="resize-se") next.h = clamp(sp.h + pyZ, 3, 200);
+        var resizeBoostX = pxZ * 1.8;
+        var resizeBoostY = pyZ * 1.8;
+        if(d.act==="resize-e" || d.act==="resize-se") next.w = clamp(sp.w + resizeBoostX, 5, 200);
+        if(d.act==="resize-s" || d.act==="resize-se") next.h = clamp(sp.h + resizeBoostY, 3, 200);
         if(d.act==="resize-w"){
-          next.x = clamp(sp.x + pxZ, -50, 150);
-          next.w = clamp(sp.w - pxZ, 5, 200);
+          next.x = clamp(sp.x + resizeBoostX, -50, 150);
+          next.w = clamp(sp.w - resizeBoostX, 5, 200);
         }
         if(d.act==="resize-n"){
-          next.y = clamp(sp.y + pyZ, -50, 150);
-          next.h = clamp(sp.h - pyZ, 3, 200);
+          next.y = clamp(sp.y + resizeBoostY, -50, 150);
+          next.h = clamp(sp.h - resizeBoostY, 3, 200);
         }
         if(d.lid.startsWith("img")){
           var sizeFromW = next.w;
@@ -437,8 +444,8 @@ export default function App(){
           if(d.act==="resize-n") next.y = sp.y + (sp.h - next.h);
         }
         if(!d.lid.startsWith("img") && d.act==="resize-se"){
-          var scaleDelta = Math.max(pxZ, pyZ);
-          next.fs = Math.round(clamp(sp.fs * (1 + scaleDelta/80), 6, 300));
+          var scaleRatio = Math.max(next.w / Math.max(sp.w, 0.01), next.h / Math.max(sp.h, 0.01));
+          next.fs = Math.round(clamp(sp.fs * scaleRatio, 6, 300));
         }
         setOv(d.sid, d.lid, next);
       }
@@ -498,7 +505,7 @@ export default function App(){
     if(tag==="INPUT" || tag==="TEXTAREA" || tag==="SELECT") return;
     // 휠클릭(1) 이거나, 스페이스바+좌클릭(0) 인 경우에만 패닝 시작
     if(e.button===1 || (e.button===0 && spaceHeld)){
-      e.preventDefault();setIsPanning(true);panRef.current={type:"pan",mx:e.clientX,my:e.clientY,sx:pan.x,sy:pan.y};
+      e.preventDefault();setIsPanning(true);panRef.current={type:"pan",mx:e.clientX,my:e.clientY,sx:pan.x,sy:pan.y,boost:1.22};
     }
   }
   function syncMainImage(src,w,h){
@@ -706,7 +713,7 @@ export default function App(){
             
             return React.createElement("div",{key:layer.id,
               style:{position:"absolute",left:er.x+"%",top:er.y+"%",width:er.w+"%",height:er.h+"%",zIndex:isSel?15:layer.zIndex+2,display:"flex",alignItems:"center",justifyContent:"center",pointerEvents:"none"}}, 
-              React.createElement("div", {id: "layer-"+sz.id+"-"+layer.id, onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")}, onContextMenu:function(e){handleContextMenuLayer(e, sz.id, layer.id)}, style:{position:"relative", display:"flex", width:"100%", height:"100%", maxWidth:"100%", maxHeight:"100%", outline:isSel?"0.5px dashed rgba(0,212,255,.7)": (layer.src?"none":"1px dashed rgba(255,255,255,0.15)"), background:layer.src?"repeating-conic-gradient(#1a1a1a 0% 25%, #151515 0% 50%) 0 0 / 8px 8px" : "rgba(255,255,255,0.03)", pointerEvents:"auto", cursor:spaceHeld?"grab":"move", alignItems:"center", justifyContent:"center", flexDirection:"column"}},
+              React.createElement("div", {id: "layer-"+sz.id+"-"+layer.id, onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")}, onContextMenu:function(e){handleContextMenuLayer(e, sz.id, layer.id)}, style:{position:"relative", display:"flex", width:"100%", height:"100%", maxWidth:"100%", maxHeight:"100%", border:isSel?"0.5px solid rgba(124,196,255,.92)":(layer.src?"0.5px solid transparent":"0.5px dashed rgba(255,255,255,0.15)"), background:layer.src?"repeating-conic-gradient(#1a1a1a 0% 25%, #151515 0% 50%) 0 0 / 8px 8px" : "rgba(255,255,255,0.03)", pointerEvents:"auto", cursor:spaceHeld?"grab":"move", alignItems:"center", justifyContent:"center", flexDirection:"column", boxSizing:"border-box"}},
                 layer.src ? React.createElement("div", {style:{width:"100%", height:"100%", overflow:"hidden", borderRadius:2}}, 
                               React.createElement("img",{src:layer.src,alt:"",draggable:false,style:{width:"100%",height:"100%",objectFit:"cover",transform:"translate("+imgX+"%,"+imgY+"%) scale("+imgS+")",pointerEvents:"none",display:"block"}})
                             )
@@ -716,17 +723,21 @@ export default function App(){
                             ),
                 isSel&&React.createElement(React.Fragment,null,
                   renderResizeHandles(sz.id,layer.id,beginDrag),
-                  React.createElement("div",{onMouseDown:function(e){if(e.button!==0)return; e.stopPropagation();e.preventDefault();saveHistory();setOverrides(function(prev){var n=Object.assign({},prev);if(n[sz.id]){var b=Object.assign({},n[sz.id]);delete b[layer.id];n[sz.id]=b}return n})},style:Object.assign({},hSt,{top:-4,left:-4,cursor:"pointer",background:"#ff4444",fontSize:6,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",width:12,height:12})},"↺")
+                  React.createElement("div",{onMouseDown:function(e){if(e.button!==0)return; e.stopPropagation();e.preventDefault();saveHistory();setOverrides(function(prev){var n=Object.assign({},prev);if(n[sz.id]){var b=Object.assign({},n[sz.id]);delete b[layer.id];n[sz.id]=b}return n})},style:Object.assign({},hSt,{top:-1.5,left:-1.5,cursor:"pointer",background:"#ff5a5a",fontSize:5.5,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",width:8,height:8,borderRadius:999,border:"0.5px solid #fff"})},"↺")
                 )
               )
             );
           }
           var dfs=er.fs*boardScale;if(dfs<=0)return null;var isCta=layer.role==="cta"; 
+          var isEditingText = isSel && activeBoard===sz.id && activeEl===layer.id;
           return React.createElement("div",{key:layer.id,
             style:{position:"absolute",left:er.x+"%",top:er.y+"%",width:er.w+"%",height:er.h+"%",display:"flex",alignItems:isCta?"center":"flex-start",justifyContent:layer.align==="center"?"center":layer.align==="right"?"flex-end":"flex-start",zIndex:isSel?15:layer.zIndex+2,userSelect:"none",pointerEvents:"none"}},
-            React.createElement("div",{id: "layer-"+sz.id+"-"+layer.id, onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")}, onContextMenu:function(e){handleContextMenuLayer(e, sz.id, layer.id)}, style:{position:"relative",display:"flex",width:"100%",height:"100%",maxWidth:"100%",maxHeight:"100%",outline:isSel?"1px solid "+MD.primary:"none", pointerEvents:"auto", cursor:spaceHeld?"grab":"move", fontFamily:'"'+layer.font+'","Noto Sans KR",sans-serif',fontSize:dfs,fontWeight:layer.weight,letterSpacing:layer.ls+"em",lineHeight:layer.lh,color:layer.color,textAlign:layer.align,alignItems:isCta?"center":"flex-start",justifyContent:layer.align==="center"?"center":layer.align==="right"?"flex-end":"flex-start",boxSizing:"border-box"}},
-              isCta&&layer.bg?React.createElement("span",{style:{background:layer.bg,padding: (6*boardScale)+"px "+(16*boardScale)+"px",borderRadius:999,whiteSpace:"nowrap",display:"block",boxShadow:"0 1px 3px rgba(0,0,0,.12)"}} ,layer.content)
-              :React.createElement("span",{style:{whiteSpace:"pre-wrap",wordBreak:"keep-all",display:"block",width:"100%"}},layer.content),
+            React.createElement("div",{id: "layer-"+sz.id+"-"+layer.id, onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")}, onContextMenu:function(e){handleContextMenuLayer(e, sz.id, layer.id)}, style:{position:"relative",display:"flex",width:"100%",height:"100%",maxWidth:"100%",maxHeight:"100%",border:isSel?"0.5px solid rgba(124,196,255,.92)":"0.5px solid transparent", pointerEvents:"auto", cursor:spaceHeld?"grab":"move", fontFamily:'"'+layer.font+'","Noto Sans KR",sans-serif',fontSize:dfs,fontWeight:layer.weight,letterSpacing:layer.ls+"em",lineHeight:layer.lh,color:layer.color,textAlign:layer.align,alignItems:isCta?"center":"flex-start",justifyContent:layer.align==="center"?"center":layer.align==="right"?"flex-end":"flex-start",boxSizing:"border-box"}},
+              isEditingText && !isCta
+                ?React.createElement("textarea",{value:layer.content,autoFocus:true,onChange:function(e){setBoardLayerProp(sz.id,layer.id,"content",e.target.value)},onMouseDown:function(e){e.stopPropagation();},rows:Math.max(2, String(layer.content).split("\n").length),style:{width:"100%",height:"100%",background:"rgba(7,12,18,.7)",border:"none",borderRadius:0,padding:"1px 2px",color:layer.color,font:"inherit",letterSpacing:"inherit",lineHeight:"inherit",resize:"none",outline:"none",boxSizing:"border-box"}})
+                :isCta&&layer.bg
+                  ?React.createElement("span",{style:{background:layer.bg,padding: (6*boardScale)+"px "+(16*boardScale)+"px",borderRadius:999,whiteSpace:"nowrap",display:"block",boxShadow:"0 1px 3px rgba(0,0,0,.12)"}} ,layer.content)
+                  :React.createElement("span",{style:{whiteSpace:"pre-wrap",wordBreak:"keep-all",display:"block",width:"100%"}},layer.content),
               isSel&&renderResizeHandles(sz.id,layer.id,beginDrag)
             )
           );
@@ -754,10 +765,10 @@ export default function App(){
     );
   }
 
-  return React.createElement("div",{style:{width:"100%",minHeight:"100vh",background:"linear-gradient(180deg,#f7f9fc 0%, #eef3f8 100%)",color:MD.text,fontFamily:"Roboto,'Noto Sans KR',sans-serif",fontSize:12,display:"flex",flexDirection:"column"}},
+  return React.createElement("div",{style:{width:"100%",minHeight:"100vh",background:"linear-gradient(180deg,#0b1017 0%, #0f1720 100%)",color:MD.text,fontFamily:"Roboto,'Noto Sans KR',sans-serif",fontSize:12,display:"flex",flexDirection:"column"}},
 
     /* HEADER */
-    React.createElement("div",{style:{height:64,background:"rgba(255,255,255,.92)",backdropFilter:"blur(18px)",borderBottom:"1px solid "+MD.line,display:"flex",alignItems:"center",padding:"0 16px",gap:10,flexShrink:0,boxShadow:"0 1px 0 rgba(255,255,255,.8), 0 6px 18px rgba(15,23,42,.04)"}},
+    React.createElement("div",{style:{height:64,background:"rgba(11,16,23,.92)",backdropFilter:"blur(18px)",borderBottom:"1px solid "+MD.line,display:"flex",alignItems:"center",padding:"0 16px",gap:10,flexShrink:0,boxShadow:"0 1px 0 rgba(255,255,255,.02), 0 6px 18px rgba(0,0,0,.2)"}},
       React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6}},
         React.createElement("div",{style:{width:28,height:28,borderRadius:10,background:"linear-gradient(135deg,#1a73e8,#34a853)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:900,color:"#fff",boxShadow:"0 8px 16px rgba(26,115,232,.2)"}},"A"),
         React.createElement("div",null,
@@ -794,7 +805,7 @@ export default function App(){
     React.createElement("div",{style:{display:"flex",flex:1,overflow:"hidden"}},
 
       /* LEFT */
-      React.createElement("div",{style:{width:260,background:MD.surface,borderRight:"1px solid "+MD.line,overflowY:"auto",flexShrink:0,boxShadow:"inset -1px 0 0 rgba(255,255,255,.8)"}},
+      React.createElement("div",{style:{width:260,background:MD.surface,borderRight:"1px solid "+MD.line,overflowY:"auto",flexShrink:0,boxShadow:"inset -1px 0 0 rgba(255,255,255,.03)"}},
         React.createElement("div",{style:{padding:10,borderBottom:"1px solid #1a1a1a"}},
           React.createElement("div",{style:sT},"🗂 레이어"),
           layers.map(function(l){var boardLayer = activeBoard ? getLayerForBoard(activeBoard, l) : l; var isImg=l.type==="image";var label=isImg?l.label:(ROLES.find(function(r){return r.key===l.role})||{}).label||l.role;var sub=isImg?(boardLayer.src?boardLayer.imgW+"×"+boardLayer.imgH+" PNG":"이미지 없음"):boardLayer.content;
@@ -836,7 +847,7 @@ export default function App(){
       ),
 
       /* CENTER */
-      React.createElement("div",{ref:canvasRef,onMouseDown:startPan,style:{flex:1,overflow:"hidden",background:"radial-gradient(circle at top, #f8fbff 0%, #edf2f8 100%)",position:"relative",cursor:spaceHeld||isPanning?"grab":"default",backgroundImage:"radial-gradient(circle,#d8e0ea 1px,transparent 1px)",backgroundSize:"24px 24px"}},
+      React.createElement("div",{ref:canvasRef,onMouseDown:startPan,style:{flex:1,overflow:"hidden",background:"radial-gradient(circle at top, #111927 0%, #0b1017 100%)",position:"relative",cursor:spaceHeld||isPanning?"grab":"default",backgroundImage:"radial-gradient(circle,rgba(148,163,184,.14) 1px,transparent 1px)",backgroundSize:"24px 24px"}},
         React.createElement("div",{ref:viewportRef,style:{transform:"translate("+pan.x+"px,"+pan.y+"px) scale("+zoom+")",transformOrigin:"0 0",display:"flex",flexWrap:"wrap",gap:20,alignItems:"flex-start",padding:40,width:"max-content"}},
           visSizes.length===0?React.createElement("div",{style:{color:"#333",fontSize:13,padding:40}},"← 좌측에서 사이즈를 선택하세요"):visSizes.map(function(s){return renderBoard(s)})
         ),
@@ -875,7 +886,7 @@ export default function App(){
       ),
 
       /* RIGHT */
-      React.createElement("div",{style:{width:280,background:MD.surface,borderLeft:"1px solid "+MD.line,overflowY:"auto",flexShrink:0,display:"flex",flexDirection:"column",boxShadow:"inset 1px 0 0 rgba(255,255,255,.8)"}},
+      React.createElement("div",{style:{width:280,background:MD.surface,borderLeft:"1px solid "+MD.line,overflowY:"auto",flexShrink:0,display:"flex",flexDirection:"column",boxShadow:"inset 1px 0 0 rgba(255,255,255,.03)"}},
         
         /* 다중 선택 전용 UI 패널 */
         selectedEls.length > 1 && activeBoard && React.createElement("div", {style:{padding:10, borderBottom:"1px solid #1a1a1a", background:"rgba(0,212,255,0.05)"}},
@@ -1061,3 +1072,4 @@ export default function App(){
     )
   );
 }
+
