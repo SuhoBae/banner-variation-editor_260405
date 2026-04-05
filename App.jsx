@@ -80,7 +80,7 @@ function renderResizeHandles(sid,lid,beginDrag,fitLayerToContent){
 }
 
 export default function App(){
-  var fileRef=useRef(null),assetFileRef=useRef(null),imgObjRef=useRef(null),dragRef=useRef(null),canvasRef=useRef(null),viewportRef=useRef(null),panRef=useRef(null),lastPointerRef=useRef(null),editingRef=useRef(null);
+  var fileRef=useRef(null),assetFileRef=useRef(null),imgObjRef=useRef(null),dragRef=useRef(null),canvasRef=useRef(null),viewportRef=useRef(null),panRef=useRef(null),lastPointerRef=useRef(null),editingRef=useRef(null),editingDraftRef=useRef(""),isComposingRef=useRef(false);
   var _bg=useState("#0f0f0f");var bgColor=_bg[0],setBgColor=_bg[1];
   var _z=useState(1);var zoom=_z[0],setZoom=_z[1];
   var _pan=useState({x:0,y:0});var pan=_pan[0],setPan=_pan[1];
@@ -117,20 +117,6 @@ export default function App(){
   useEffect(function() {
     stateRef.current = { layers: layers, overrides: overrides, bgColor: bgColor, boardDefaults: boardDefaults, customFonts: customFonts };
   }, [layers, overrides, bgColor, boardDefaults, customFonts]);
-
-  useEffect(function(){
-    if(!editingTextId || !editingRef.current) return;
-    var el = editingRef.current;
-    el.focus();
-    var range = document.createRange();
-    range.selectNodeContents(el);
-    range.collapse(false);
-    var sel = window.getSelection();
-    if(sel){
-      sel.removeAllRanges();
-      sel.addRange(range);
-    }
-  }, [editingTextId, activeBoard, activeEl]);
 
   var saveHistory = useCallback(function() {
     var st = JSON.parse(JSON.stringify(stateRef.current));
@@ -184,6 +170,25 @@ export default function App(){
   var _editing=useState(null);var editingTextId=_editing[0],setEditingTextId=_editing[1];
   var _ec=useState({});var exportChecked=_ec[0],setExportChecked=_ec[1];
   var _tk=useState(0);var setTick=_tk[1];
+
+  useEffect(function(){
+    if(!editingTextId || !editingRef.current) return;
+    var baseLayer = layers.find(function(l){return l.id===editingTextId});
+    var currentLayer = activeBoard && baseLayer ? getLayerForBoard(activeBoard, baseLayer) : baseLayer;
+    var nextText = currentLayer && currentLayer.content != null ? String(currentLayer.content) : "";
+    editingDraftRef.current = nextText;
+    editingRef.current.textContent = nextText;
+    var el = editingRef.current;
+    el.focus();
+    var range = document.createRange();
+    range.selectNodeContents(el);
+    range.collapse(false);
+    var sel = window.getSelection();
+    if(sel){
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+  }, [editingTextId, activeBoard, activeEl, layers, overrides, boardDefaults]);
   
   var allSizes=ALL_SIZES.concat(customSizes);
   var visSizes=allSizes.filter(function(s){return selIds.indexOf(s.id)!==-1});
@@ -259,6 +264,12 @@ export default function App(){
   }
   function setBoardLayerProp(sid,lid,key,val){
     setOv(sid,lid,Object.assign({}, {[key]:val}));
+  }
+  function commitEditingText(sid,lid,forceBlur){
+    if(!sid || !lid) return;
+    var nextText = editingDraftRef.current.replace(/\r/g,"");
+    setBoardLayerProp(sid,lid,"content",nextText);
+    if(forceBlur) setEditingTextId(null);
   }
   function clearBoardLayerOverride(sid,lid){
     setOverrides(function(prev){
@@ -795,7 +806,7 @@ export default function App(){
             React.createElement("div",{id: "layer-"+sz.id+"-"+layer.id, onClick:function(e){e.stopPropagation();activateLayerSelection(sz.id,layer.id,[layer.id]);}, onMouseDown:function(e){if(isEditingText && !isCta) return; if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")}, onContextMenu:function(e){handleContextMenuLayer(e, sz.id, layer.id)}, style:{position:"relative",display:"flex",width:"100%",height:"100%",maxWidth:"100%",maxHeight:"100%",border:isSel?"0.5px solid rgba(124,196,255,.92)":"0.5px solid transparent", pointerEvents:"auto", cursor:spaceHeld?"grab":"move", fontFamily:'"'+layer.font+'","Noto Sans KR",sans-serif',fontSize:dfs,fontWeight:layer.weight,letterSpacing:layer.ls+"em",lineHeight:layer.lh,color:layer.color,textAlign:layer.align,alignItems:isCta?"center":"flex-start",justifyContent:layer.align==="center"?"center":layer.align==="right"?"flex-end":"flex-start",boxSizing:"border-box",overflow:"visible"}},
               isSel && !isEditingText && React.createElement("div",{onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")},style:{position:"absolute",inset:-1,cursor:spaceHeld?"grab":"move",background:"transparent"}}),
               isEditingText && !isCta
-                ?React.createElement("div",{ref:editingRef,id:"layer-content-"+sz.id+"-"+layer.id,contentEditable:true,suppressContentEditableWarning:true,onClick:function(e){e.stopPropagation();},onMouseDown:function(e){e.stopPropagation();},onInput:function(e){setBoardLayerProp(sz.id,layer.id,"content",e.currentTarget.innerText.replace(/\r/g,""));},onBlur:function(){setEditingTextId(null);},onKeyDown:function(e){if(e.key==="Escape"){e.preventDefault();e.currentTarget.blur();}},style:{minWidth:"100%",minHeight:"100%",whiteSpace:"pre-wrap",wordBreak:"keep-all",display:"block",width:"100%",background:"transparent",outline:"none",overflow:"visible",cursor:"text"}},layer.content)
+                ?React.createElement("div",{ref:editingRef,id:"layer-content-"+sz.id+"-"+layer.id,contentEditable:true,suppressContentEditableWarning:true,onClick:function(e){e.stopPropagation();},onMouseDown:function(e){e.stopPropagation();},onCompositionStart:function(){isComposingRef.current=true;},onCompositionEnd:function(e){isComposingRef.current=false;editingDraftRef.current=e.currentTarget.innerText;},onInput:function(e){editingDraftRef.current=e.currentTarget.innerText;},onBlur:function(){commitEditingText(sz.id,layer.id,true);},onKeyDown:function(e){if(e.key==="Escape"){e.preventDefault();commitEditingText(sz.id,layer.id,true);e.currentTarget.blur();}},style:{minWidth:"100%",minHeight:"100%",whiteSpace:"pre-wrap",wordBreak:"keep-all",display:"block",width:"100%",background:"transparent",outline:"none",overflow:"visible",cursor:"text"}})
                 :isCta&&layer.bg
                   ?React.createElement("span",{id:"layer-content-"+sz.id+"-"+layer.id,style:{background:layer.bg,padding:(6*boardScale)+"px "+(16*boardScale)+"px",borderRadius:999,whiteSpace:"nowrap",display:"inline-flex",alignItems:"center",justifyContent:"center",lineHeight:1,boxShadow:"0 1px 3px rgba(0,0,0,.12)"}} ,layer.content)
                   :React.createElement("span",{id:"layer-content-"+sz.id+"-"+layer.id,style:{whiteSpace:"pre-wrap",wordBreak:"keep-all",display:"block",width:"100%",overflow:"visible"}},layer.content),
