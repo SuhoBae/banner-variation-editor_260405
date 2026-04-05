@@ -45,17 +45,31 @@ function computeLayout(w,h){
 }
 
 function layoutRegion(lo,role){if(role==="headline")return lo.headline;if(role==="subheadline")return lo.subheadline;if(role==="cta")return lo.cta;if(role==="legal")return{x:lo.cta.x,y:lo.cta.y+lo.cta.h+1,w:lo.cta.w,h:8};return lo.headline}
-var iS={background:"#0a0a0a",border:"1px solid #222",borderRadius:3,padding:"3px 6px",color:"#ccc",fontSize:10,fontFamily:"'JetBrains Mono',monospace",width:"100%",boxSizing:"border-box"};
-var sT={fontSize:10,color:"#555",textTransform:"uppercase",letterSpacing:".08em",marginBottom:8,fontWeight:600};
-var hSt={width:10,height:10,background:"#00d4ff",border:"1.5px solid #fff",borderRadius:2,position:"absolute",zIndex:30,boxShadow:"0 0 6px rgba(0,0,0,.6)"};
+var MD = {
+  bg:"#f3f6fb",
+  surface:"#ffffff",
+  surface2:"#f8fafc",
+  surface3:"#eef3f8",
+  line:"#d6dde8",
+  text:"#1f2937",
+  muted:"#667085",
+  primary:"#1a73e8",
+  primarySoft:"#e8f0fe",
+  danger:"#d93025",
+  dangerSoft:"#fce8e6",
+  shadow:"0 1px 2px rgba(15,23,42,.08), 0 8px 24px rgba(15,23,42,.06)"
+};
+var iS={background:MD.surface,border:"1px solid "+MD.line,borderRadius:12,padding:"8px 10px",color:MD.text,fontSize:12,fontFamily:"Roboto,'Noto Sans KR',sans-serif",width:"100%",boxSizing:"border-box",boxShadow:"inset 0 1px 0 rgba(255,255,255,.8)"};
+var sT={fontSize:11,color:MD.muted,textTransform:"uppercase",letterSpacing:".08em",marginBottom:10,fontWeight:700};
+var hSt={background:MD.primary,position:"absolute",zIndex:30,boxShadow:"0 1px 3px rgba(26,115,232,.35)"};
 function NI(p){return React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4,marginBottom:5}},React.createElement("span",{style:{fontSize:10,color:"#555",width:48,flexShrink:0}},p.label),React.createElement("input",{type:"number",min:p.min,max:p.max,step:p.step||1,value:Math.round(p.value*100)/100,onFocus:p.onFocus,onChange:function(e){p.onChange(+e.target.value)},style:Object.assign({},iS,{flex:1})}),p.unit&&React.createElement("span",{style:{fontSize:9,color:"#444",width:16}},p.unit))}
 function renderResizeHandles(sid,lid,beginDrag){
   return React.createElement(React.Fragment,null,
-    React.createElement("div",{onMouseDown:function(e){beginDrag(e,sid,lid,"resize-se")},style:Object.assign({},hSt,{bottom:-4,right:-4,cursor:"nwse-resize"})}),
-    React.createElement("div",{onMouseDown:function(e){beginDrag(e,sid,lid,"resize-e")},style:Object.assign({},hSt,{top:"50%",right:-4,transform:"translateY(-50%)",cursor:"ew-resize"})}),
-    React.createElement("div",{onMouseDown:function(e){beginDrag(e,sid,lid,"resize-w")},style:Object.assign({},hSt,{top:"50%",left:-4,transform:"translateY(-50%)",cursor:"ew-resize"})}),
-    React.createElement("div",{onMouseDown:function(e){beginDrag(e,sid,lid,"resize-s")},style:Object.assign({},hSt,{left:"50%",bottom:-4,transform:"translateX(-50%)",cursor:"ns-resize"})}),
-    React.createElement("div",{onMouseDown:function(e){beginDrag(e,sid,lid,"resize-n")},style:Object.assign({},hSt,{left:"50%",top:-4,transform:"translateX(-50%)",cursor:"ns-resize"})})
+    React.createElement("div",{onMouseDown:function(e){beginDrag(e,sid,lid,"resize-se")},style:Object.assign({},hSt,{width:8,height:8,borderRadius:999,bottom:-4,right:-4,cursor:"nwse-resize"})}),
+    React.createElement("div",{onMouseDown:function(e){beginDrag(e,sid,lid,"resize-e")},style:Object.assign({},hSt,{width:2,height:18,top:"50%",right:-1,transform:"translateY(-50%)",cursor:"ew-resize"})}),
+    React.createElement("div",{onMouseDown:function(e){beginDrag(e,sid,lid,"resize-w")},style:Object.assign({},hSt,{width:2,height:18,top:"50%",left:-1,transform:"translateY(-50%)",cursor:"ew-resize"})}),
+    React.createElement("div",{onMouseDown:function(e){beginDrag(e,sid,lid,"resize-s")},style:Object.assign({},hSt,{width:18,height:2,left:"50%",bottom:-1,transform:"translateX(-50%)",cursor:"ns-resize"})}),
+    React.createElement("div",{onMouseDown:function(e){beginDrag(e,sid,lid,"resize-n")},style:Object.assign({},hSt,{width:18,height:2,left:"50%",top:-1,transform:"translateX(-50%)",cursor:"ns-resize"})})
   );
 }
 
@@ -158,7 +172,7 @@ export default function App(){
 
   useEffect(function(){
     var l=document.createElement("link");l.href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;800;900&family=Nanum+Gothic:wght@400;700;800&family=Noto+Serif+KR:wght@300;400;500;700;900&family=Black+Han+Sans&family=Roboto:wght@300;400;500;700;900&family=Montserrat:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@400;500;600;700;800;900&family=Oswald:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap";l.rel="stylesheet";document.head.appendChild(l);
-    var s=document.createElement("style");s.innerHTML=".ctx-item { padding: 6px 10px; font-size: 11px; color: #ccc; cursor: pointer; border-radius: 2px; } .ctx-item:hover { background: #00d4ff; color: #000; } .ctx-item.danger:hover { background: #f44; color: #fff; }";document.head.appendChild(s);
+    var s=document.createElement("style");s.innerHTML=".ctx-item { padding: 8px 10px; font-size: 12px; color: "+MD.text+"; cursor: pointer; border-radius: 10px; } .ctx-item:hover { background: "+MD.primarySoft+"; color: "+MD.primary+"; } .ctx-item.danger:hover { background: "+MD.dangerSoft+"; color: "+MD.danger+"; }";document.head.appendChild(s);
   },[]);
   
   useEffect(function(){
@@ -270,6 +284,13 @@ export default function App(){
     });
   }
   var activeLayerObj = activeBoard && activeBaseLayerObj ? getLayerForBoard(activeBoard, activeBaseLayerObj) : activeBaseLayerObj;
+  function removeLayerFromBoard(sid,lid){
+    setOv(sid,lid,{hidden:true});
+    if(activeBoard===sid && activeEl===lid){
+      setActiveEl(null);
+      setSelectedEls([]);
+    }
+  }
   
   function getElRect(sid,layer){
     var sz=allSizes.find(function(s){return s.id===sid});if(!sz)return{x:0,y:0,w:100,h:100,fs:12};
@@ -414,6 +435,10 @@ export default function App(){
           next.h = sizeFromW * (sz.w / sz.h);
           if(d.act==="resize-w") next.x = sp.x + (sp.w - next.w);
           if(d.act==="resize-n") next.y = sp.y + (sp.h - next.h);
+        }
+        if(!d.lid.startsWith("img") && d.act==="resize-se"){
+          var scaleDelta = Math.max(pxZ, pyZ);
+          next.fs = Math.round(clamp(sp.fs * (1 + scaleDelta/80), 6, 300));
         }
         setOv(d.sid, d.lid, next);
       }
@@ -699,8 +724,8 @@ export default function App(){
           var dfs=er.fs*boardScale;if(dfs<=0)return null;var isCta=layer.role==="cta"; 
           return React.createElement("div",{key:layer.id,
             style:{position:"absolute",left:er.x+"%",top:er.y+"%",width:er.w+"%",height:er.h+"%",display:"flex",alignItems:isCta?"center":"flex-start",justifyContent:layer.align==="center"?"center":layer.align==="right"?"flex-end":"flex-start",zIndex:isSel?15:layer.zIndex+2,userSelect:"none",pointerEvents:"none"}},
-            React.createElement("div",{id: "layer-"+sz.id+"-"+layer.id, onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")}, onContextMenu:function(e){handleContextMenuLayer(e, sz.id, layer.id)}, style:{position:"relative",display:"inline-block",maxWidth:"100%",outline:isSel?"0.5px solid #00d4ff":"none", pointerEvents:"auto", cursor:spaceHeld?"grab":"move", fontFamily:'"'+layer.font+'","Noto Sans KR",sans-serif',fontSize:dfs,fontWeight:layer.weight,letterSpacing:layer.ls+"em",lineHeight:layer.lh,color:layer.color,textAlign:layer.align}},
-              isCta&&layer.bg?React.createElement("span",{style:{background:layer.bg,padding: (6*boardScale)+"px "+(16*boardScale)+"px",borderRadius:4*boardScale,whiteSpace:"nowrap",display:"block"}},layer.content)
+            React.createElement("div",{id: "layer-"+sz.id+"-"+layer.id, onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")}, onContextMenu:function(e){handleContextMenuLayer(e, sz.id, layer.id)}, style:{position:"relative",display:"flex",width:"100%",height:"100%",maxWidth:"100%",maxHeight:"100%",outline:isSel?"1px solid "+MD.primary:"none", pointerEvents:"auto", cursor:spaceHeld?"grab":"move", fontFamily:'"'+layer.font+'","Noto Sans KR",sans-serif',fontSize:dfs,fontWeight:layer.weight,letterSpacing:layer.ls+"em",lineHeight:layer.lh,color:layer.color,textAlign:layer.align,alignItems:isCta?"center":"flex-start",justifyContent:layer.align==="center"?"center":layer.align==="right"?"flex-end":"flex-start",boxSizing:"border-box"}},
+              isCta&&layer.bg?React.createElement("span",{style:{background:layer.bg,padding: (6*boardScale)+"px "+(16*boardScale)+"px",borderRadius:999,whiteSpace:"nowrap",display:"block",boxShadow:"0 1px 3px rgba(0,0,0,.12)"}} ,layer.content)
               :React.createElement("span",{style:{whiteSpace:"pre-wrap",wordBreak:"keep-all",display:"block",width:"100%"}},layer.content),
               isSel&&renderResizeHandles(sz.id,layer.id,beginDrag)
             )
@@ -729,48 +754,52 @@ export default function App(){
     );
   }
 
-  return React.createElement("div",{style:{width:"100%",minHeight:"100vh",background:"#0a0a0a",color:"#e0e0e0",fontFamily:"'JetBrains Mono','Noto Sans KR',sans-serif",fontSize:12,display:"flex",flexDirection:"column"}},
+  return React.createElement("div",{style:{width:"100%",minHeight:"100vh",background:"linear-gradient(180deg,#f7f9fc 0%, #eef3f8 100%)",color:MD.text,fontFamily:"Roboto,'Noto Sans KR',sans-serif",fontSize:12,display:"flex",flexDirection:"column"}},
 
     /* HEADER */
-    React.createElement("div",{style:{height:44,background:"#111",borderBottom:"1px solid #222",display:"flex",alignItems:"center",padding:"0 12px",gap:8,flexShrink:0}},
+    React.createElement("div",{style:{height:64,background:"rgba(255,255,255,.92)",backdropFilter:"blur(18px)",borderBottom:"1px solid "+MD.line,display:"flex",alignItems:"center",padding:"0 16px",gap:10,flexShrink:0,boxShadow:"0 1px 0 rgba(255,255,255,.8), 0 6px 18px rgba(15,23,42,.04)"}},
       React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6}},
-        React.createElement("div",{style:{width:22,height:22,borderRadius:5,background:"linear-gradient(135deg,#00d4ff,#A50034)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:900,color:"#fff"}},"A"),
-        React.createElement("span",{style:{fontWeight:700,fontSize:13,color:"#fff"}},"App")
+        React.createElement("div",{style:{width:28,height:28,borderRadius:10,background:"linear-gradient(135deg,#1a73e8,#34a853)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:900,color:"#fff",boxShadow:"0 8px 16px rgba(26,115,232,.2)"}},"A"),
+        React.createElement("div",null,
+          React.createElement("div",{style:{fontWeight:700,fontSize:14,color:MD.text}},"AdCanvas"),
+          React.createElement("div",{style:{fontSize:11,color:MD.muted,marginTop:1}},"Banner variation editor")
+        )
       ),
       React.createElement("div",{style:{flex:1}}),
       
       /* History UI */
-      React.createElement("button",{onClick:undo, disabled:histRef.current.past.length===0, style:{padding:"3px 8px",borderRadius:3,fontSize:10,border:"none",cursor:histRef.current.past.length===0?"default":"pointer",fontFamily:"inherit",background:"#1a1a1a",color:histRef.current.past.length===0?"#444":"#aaa"}}, "↩ Undo"),
-      React.createElement("button",{onClick:redo, disabled:histRef.current.future.length===0, style:{padding:"3px 8px",borderRadius:3,fontSize:10,border:"none",cursor:histRef.current.future.length===0?"default":"pointer",fontFamily:"inherit",background:"#1a1a1a",color:histRef.current.future.length===0?"#444":"#aaa"}}, "↪ Redo"),
-      React.createElement("div",{style:{width:1,height:16,background:"#222"}}),
+      React.createElement("button",{onClick:undo, disabled:histRef.current.past.length===0, style:{padding:"8px 12px",borderRadius:999,fontSize:11,border:"1px solid "+MD.line,cursor:histRef.current.past.length===0?"default":"pointer",fontFamily:"inherit",background:MD.surface,color:histRef.current.past.length===0?"#b0b8c5":MD.text,boxShadow:"0 1px 2px rgba(15,23,42,.04)"}}, "↩ Undo"),
+      React.createElement("button",{onClick:redo, disabled:histRef.current.future.length===0, style:{padding:"8px 12px",borderRadius:999,fontSize:11,border:"1px solid "+MD.line,cursor:histRef.current.future.length===0?"default":"pointer",fontFamily:"inherit",background:MD.surface,color:histRef.current.future.length===0?"#b0b8c5":MD.text,boxShadow:"0 1px 2px rgba(15,23,42,.04)"}}, "↪ Redo"),
+      React.createElement("div",{style:{width:1,height:20,background:MD.line}}),
 
       /* Zoom/Pan UI */
-      React.createElement("button",{onClick:function(){var anchor=getZoomAnchor();zoomAtPoint(clamp(zoom-.15,.1,5),anchor.x,anchor.y)},style:{width:24,height:24,borderRadius:3,border:"1px solid #222",background:"#1a1a1a",color:"#888",cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit"}},"-"),
-      React.createElement("input",{type:"range",min:10,max:300,step:5,value:Math.round(zoom*100),onChange:function(e){var anchor=getZoomAnchor();zoomAtPoint(+e.target.value/100,anchor.x,anchor.y)},style:{width:100,accentColor:"#00d4ff"}}),
-      React.createElement("button",{onClick:function(){var anchor=getZoomAnchor();zoomAtPoint(clamp(zoom+.15,.1,5),anchor.x,anchor.y)},style:{width:24,height:24,borderRadius:3,border:"1px solid #222",background:"#1a1a1a",color:"#888",cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit"}},"+"),
-      React.createElement("span",{style:{fontSize:10,color:"#888",width:36,textAlign:"center",cursor:"pointer",userSelect:"none"},onClick:function(){setZoom(1);setPan({x:0,y:0})}},Math.round(zoom*100)+"%"),
-      React.createElement("button",{onClick:function(){setZoom(1);setPan({x:0,y:0})},style:{padding:"3px 6px",borderRadius:3,fontSize:9,border:"1px solid #222",cursor:"pointer",fontFamily:"inherit",background:"#1a1a1a",color:"#666"}},"100%"),
-      React.createElement("button",{onClick:function(){var anchor=getZoomAnchor();zoomAtPoint(.5,anchor.x,anchor.y)},style:{padding:"3px 6px",borderRadius:3,fontSize:9,border:"1px solid #222",cursor:"pointer",fontFamily:"inherit",background:"#1a1a1a",color:"#666"}},"50%"),
-      React.createElement("button",{onClick:function(){var anchor=getZoomAnchor();zoomAtPoint(.25,anchor.x,anchor.y)},style:{padding:"3px 6px",borderRadius:3,fontSize:9,border:"1px solid #222",cursor:"pointer",fontFamily:"inherit",background:"#1a1a1a",color:"#666"}},"25%"),
+      React.createElement("button",{onClick:function(){var anchor=getZoomAnchor();zoomAtPoint(clamp(zoom-.15,.1,5),anchor.x,anchor.y)},style:{width:32,height:32,borderRadius:999,border:"1px solid "+MD.line,background:MD.surface,color:MD.text,cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit"}},"-"),
+      React.createElement("input",{type:"range",min:10,max:300,step:5,value:Math.round(zoom*100),onChange:function(e){var anchor=getZoomAnchor();zoomAtPoint(+e.target.value/100,anchor.x,anchor.y)},style:{width:120,accentColor:MD.primary}}),
+      React.createElement("button",{onClick:function(){var anchor=getZoomAnchor();zoomAtPoint(clamp(zoom+.15,.1,5),anchor.x,anchor.y)},style:{width:32,height:32,borderRadius:999,border:"1px solid "+MD.line,background:MD.surface,color:MD.text,cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit"}},"+"),
+      React.createElement("span",{style:{fontSize:11,color:MD.muted,width:44,textAlign:"center",cursor:"pointer",userSelect:"none",fontWeight:600},onClick:function(){setZoom(1);setPan({x:0,y:0})}},Math.round(zoom*100)+"%"),
+      React.createElement("button",{onClick:function(){setZoom(1);setPan({x:0,y:0})},style:{padding:"8px 10px",borderRadius:999,fontSize:10,border:"1px solid "+MD.line,cursor:"pointer",fontFamily:"inherit",background:MD.surface,color:MD.muted}},"100%"),
+      React.createElement("button",{onClick:function(){var anchor=getZoomAnchor();zoomAtPoint(.5,anchor.x,anchor.y)},style:{padding:"8px 10px",borderRadius:999,fontSize:10,border:"1px solid "+MD.line,cursor:"pointer",fontFamily:"inherit",background:MD.surface,color:MD.muted}},"50%"),
+      React.createElement("button",{onClick:function(){var anchor=getZoomAnchor();zoomAtPoint(.25,anchor.x,anchor.y)},style:{padding:"8px 10px",borderRadius:999,fontSize:10,border:"1px solid "+MD.line,cursor:"pointer",fontFamily:"inherit",background:MD.surface,color:MD.muted}},"25%"),
 
-      React.createElement("div",{style:{width:1,height:16,background:"#222"}}),
-      React.createElement("button",{onClick:function(){setClipBoard(!clipBoard)},style:{padding:"3px 8px",borderRadius:3,fontSize:10,border:"none",cursor:"pointer",fontFamily:"inherit",background:clipBoard?"rgba(0,212,255,.12)":"#1a1a1a",color:clipBoard?"#00d4ff":"#555"}}, clipBoard?"✂️ Clip":"👁 Overflow"),
-      React.createElement("button",{onClick:function(){setShowSafe(!showSafe)},style:{padding:"3px 8px",borderRadius:3,fontSize:10,border:"none",cursor:"pointer",fontFamily:"inherit",background:showSafe?"rgba(0,212,255,.12)":"#1a1a1a",color:showSafe?"#00d4ff":"#555"}},"🛡Safe"),
-      React.createElement("button",{onClick:function(){setShowGrid(!showGrid)},style:{padding:"3px 8px",borderRadius:3,fontSize:10,border:"none",cursor:"pointer",fontFamily:"inherit",background:showGrid?"rgba(0,212,255,.12)":"#1a1a1a",color:showGrid?"#00d4ff":"#555"}},"📏Grid"),
-      React.createElement("div",{style:{width:1,height:16,background:"#222"}}),
-      React.createElement("button",{onClick:function(){var a={};visSizes.forEach(function(s){a[s.id]=true});setExportChecked(a)},style:{padding:"3px 6px",borderRadius:3,fontSize:9,border:"1px solid #222",cursor:"pointer",fontFamily:"inherit",background:"#1a1a1a",color:"#888"}},"전체선택"),
-      React.createElement("button",{onClick:function(){setExportChecked({})},style:{padding:"3px 6px",borderRadius:3,fontSize:9,border:"1px solid #222",cursor:"pointer",fontFamily:"inherit",background:"#1a1a1a",color:"#888"}},"해제"),
-      React.createElement("button",{onClick:handleExport,disabled:exportCount===0,style:{padding:"3px 12px",borderRadius:3,fontSize:10,border:"none",fontFamily:"inherit",fontWeight:700,cursor:exportCount?"pointer":"default",background:exportCount?"linear-gradient(135deg,#00d4ff,#0099cc)":"#222",color:exportCount?"#000":"#444"}},"⬇ Export"+(exportCount?" ("+exportCount+")":""))
+      React.createElement("div",{style:{width:1,height:20,background:MD.line}}),
+      React.createElement("button",{onClick:function(){setClipBoard(!clipBoard)},style:{padding:"8px 12px",borderRadius:999,fontSize:11,border:"1px solid "+(clipBoard?MD.primary:MD.line),cursor:"pointer",fontFamily:"inherit",background:clipBoard?MD.primarySoft:MD.surface,color:clipBoard?MD.primary:MD.muted}}, clipBoard?"✂️ Clip":"👁 Overflow"),
+      React.createElement("button",{onClick:function(){setShowSafe(!showSafe)},style:{padding:"8px 12px",borderRadius:999,fontSize:11,border:"1px solid "+(showSafe?MD.primary:MD.line),cursor:"pointer",fontFamily:"inherit",background:showSafe?MD.primarySoft:MD.surface,color:showSafe?MD.primary:MD.muted}},"🛡 Safe"),
+      React.createElement("button",{onClick:function(){setShowGrid(!showGrid)},style:{padding:"8px 12px",borderRadius:999,fontSize:11,border:"1px solid "+(showGrid?MD.primary:MD.line),cursor:"pointer",fontFamily:"inherit",background:showGrid?MD.primarySoft:MD.surface,color:showGrid?MD.primary:MD.muted}},"📏 Grid"),
+      React.createElement("div",{style:{width:1,height:20,background:MD.line}}),
+      React.createElement("button",{onClick:function(){var a={};visSizes.forEach(function(s){a[s.id]=true});setExportChecked(a)},style:{padding:"8px 10px",borderRadius:999,fontSize:10,border:"1px solid "+MD.line,cursor:"pointer",fontFamily:"inherit",background:MD.surface,color:MD.muted}},"전체선택"),
+      React.createElement("button",{onClick:function(){setExportChecked({})},style:{padding:"8px 10px",borderRadius:999,fontSize:10,border:"1px solid "+MD.line,cursor:"pointer",fontFamily:"inherit",background:MD.surface,color:MD.muted}},"해제"),
+      React.createElement("button",{onClick:handleExport,disabled:exportCount===0,style:{padding:"9px 16px",borderRadius:999,fontSize:11,border:"none",fontFamily:"inherit",fontWeight:700,cursor:exportCount?"pointer":"default",background:exportCount?MD.primary:"#dfe4ec",color:exportCount?"#fff":"#93a0b3",boxShadow:exportCount?"0 8px 16px rgba(26,115,232,.2)":"none"}},"⬇ Export"+(exportCount?" ("+exportCount+")":""))
     ),
 
     React.createElement("div",{style:{display:"flex",flex:1,overflow:"hidden"}},
 
       /* LEFT */
-      React.createElement("div",{style:{width:230,background:"#111",borderRight:"1px solid #1a1a1a",overflowY:"auto",flexShrink:0}},
+      React.createElement("div",{style:{width:260,background:MD.surface,borderRight:"1px solid "+MD.line,overflowY:"auto",flexShrink:0,boxShadow:"inset -1px 0 0 rgba(255,255,255,.8)"}},
         React.createElement("div",{style:{padding:10,borderBottom:"1px solid #1a1a1a"}},
           React.createElement("div",{style:sT},"🗂 레이어"),
-          layers.map(function(l){var isImg=l.type==="image";var label=isImg?l.label:(ROLES.find(function(r){return r.key===l.role})||{}).label||l.role;var sub=isImg?(l.src?l.imgW+"×"+l.imgH+" PNG":"이미지 없음"):l.content;
+          layers.map(function(l){var boardLayer = activeBoard ? getLayerForBoard(activeBoard, l) : l; var isImg=l.type==="image";var label=isImg?l.label:(ROLES.find(function(r){return r.key===l.role})||{}).label||l.role;var sub=isImg?(boardLayer.src?boardLayer.imgW+"×"+boardLayer.imgH+" PNG":"이미지 없음"):boardLayer.content;
             var isSelected = selectedEls.indexOf(l.id) !== -1;
+            var layerHidden = activeBoard ? !!boardLayer.hidden : !boardLayer.visible;
             return React.createElement("div",{key:l.id,onClick:function(e){
                 if(e.shiftKey) {
                   var newSel = isSelected ? selectedEls.filter(function(x){return x!==l.id}) : selectedEls.concat([l.id]);
@@ -778,16 +807,16 @@ export default function App(){
                 } else {
                   setSelectedEls([l.id]); setActiveEl(l.id);
                 }
-              },style:{display:"flex",alignItems:"center",gap:6,padding:"5px 6px",borderRadius:3,cursor:"pointer",marginBottom:1,background:isSelected?"rgba(0,212,255,.06)":"transparent",border:isSelected?"1px solid rgba(0,212,255,.15)":"1px solid transparent"}},
-              React.createElement("input",{type:"checkbox",checked:l.visible,onChange:function(e){e.stopPropagation();saveHistory();updateLayer(l.id,"visible",!l.visible)},style:{accentColor:"#00d4ff"}}),
-              React.createElement("div",{style:{width:14,height:14,borderRadius:2,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,flexShrink:0,background:isImg?"#1a2a1a":"transparent",border:"1px solid "+(isImg?"#2a3a2a":"#333"),color:isImg?"#4ade80":(l.color||"#888")}},isImg?"🖼":"T"),
-              React.createElement("div",{style:{flex:1,minWidth:0}},React.createElement("div",{style:{fontSize:9,color:"#666",textTransform:"uppercase",letterSpacing:".04em"}},label),React.createElement("div",{style:{fontSize:10,color:"#aaa",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},sub))
+              },style:{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",borderRadius:14,cursor:"pointer",marginBottom:4,background:isSelected?MD.primarySoft:MD.surface2,border:isSelected?"1px solid rgba(26,115,232,.18)":"1px solid transparent",opacity:layerHidden?0.55:1}},
+              React.createElement("input",{type:"checkbox",checked:!layerHidden,onChange:function(e){e.stopPropagation();saveHistory(); if(activeBoard) setOv(activeBoard,l.id,{hidden:layerHidden?false:true}); else updateLayer(l.id,"visible",!l.visible)},style:{accentColor:MD.primary}}),
+              React.createElement("div",{style:{width:18,height:18,borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,flexShrink:0,background:isImg?"#e8f5e9":"#eef3f8",border:"1px solid "+MD.line,color:isImg?"#2e7d32":(boardLayer.color||MD.muted)}},isImg?"🖼":"T"),
+              React.createElement("div",{style:{flex:1,minWidth:0}},React.createElement("div",{style:{fontSize:10,color:MD.muted,textTransform:"uppercase",letterSpacing:".04em"}},label),React.createElement("div",{style:{fontSize:12,color:MD.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},sub))
             )}),
           React.createElement("div",{onClick:function(){fileRef.current&&fileRef.current.click()},onDrop:function(e){e.preventDefault();handleFile(e.dataTransfer.files&&e.dataTransfer.files[0])},onDragOver:function(e){e.preventDefault()},style:{marginTop:4,border:"1px dashed #333",borderRadius:4,padding:imgLayer&&imgLayer.src?4:12,cursor:"pointer",textAlign:"center",background:"#0a0a0a",overflow:"hidden"}},
             imgLayer&&imgLayer.src?React.createElement("div",{style:{position:"relative"}},React.createElement("img",{src:imgLayer.src,alt:"",style:{width:"100%",maxHeight:80,objectFit:"contain",display:"block",background:"repeating-conic-gradient(#1a1a1a 0% 25%, #151515 0% 50%) 0 0 / 8px 8px"}}),React.createElement("button",{onClick:function(e){e.stopPropagation();saveHistory();updateLayer(imgLayer.id,"src",null);imgObjRef.current=null},style:{position:"absolute",top:2,right:2,background:"rgba(0,0,0,.7)",border:"none",color:"#f44",cursor:"pointer",borderRadius:2,padding:"0 3px",fontSize:9}},"✕")):React.createElement("div",null,React.createElement("div",{style:{fontSize:14}},"📁"),React.createElement("div",{style:{color:"#444",fontSize:9}},"PNG 업로드"))
           ),
           React.createElement("input",{ref:fileRef,type:"file",accept:"image/png",onChange:function(e){handleFile(e.target.files&&e.target.files[0])},style:{display:"none"}}),
-          React.createElement("button",{onClick:function(){saveHistory();var id="l"+Date.now();setLayers(function(p){return p.concat([{id:id,type:"text",role:"headline",content:"새 텍스트",font:"Noto Sans KR",size:24,weight:700,ls:0,lh:1.4,color:"#FFFFFF",align:"center",visible:true,zIndex:p.length}])});setActiveEl(id);setSelectedEls([id]);},style:{width:"100%",padding:"4px",border:"1px dashed #333",borderRadius:3,background:"transparent",color:"#444",cursor:"pointer",fontSize:10,fontFamily:"inherit",marginTop:4}},"+ 텍스트 레이어 추가")
+          React.createElement("button",{onClick:function(){saveHistory();var id="l"+Date.now();setLayers(function(p){return p.concat([{id:id,type:"text",role:"headline",content:"새 텍스트",font:"Noto Sans KR",size:24,weight:700,ls:0,lh:1.4,color:"#FFFFFF",align:"center",visible:true,zIndex:p.length}])}); if(activeBoard){setOverrides(function(prev){var next=Object.assign({},prev);allSizes.forEach(function(sz){if(sz.id!==activeBoard){var board=Object.assign({},next[sz.id]||{});board[id]=Object.assign({},board[id]||{},{hidden:true});next[sz.id]=board;}});return next;});} setActiveEl(id);setSelectedEls([id]);},style:{width:"100%",padding:"10px 12px",border:"1px dashed "+MD.line,borderRadius:14,background:MD.surface,color:MD.muted,cursor:"pointer",fontSize:11,fontWeight:600,fontFamily:"inherit",marginTop:8}},"+ 텍스트 레이어 추가")
         ),
         React.createElement("div",{style:{padding:10,borderBottom:"1px solid #1a1a1a"}},
           React.createElement("div",{style:sT},"🎨 캔버스 배경"),
@@ -807,12 +836,12 @@ export default function App(){
       ),
 
       /* CENTER */
-      React.createElement("div",{ref:canvasRef,onMouseDown:startPan,style:{flex:1,overflow:"hidden",background:"#080808",position:"relative",cursor:spaceHeld||isPanning?"grab":"default",backgroundImage:"radial-gradient(circle,#181818 1px,transparent 1px)",backgroundSize:"24px 24px"}},
+      React.createElement("div",{ref:canvasRef,onMouseDown:startPan,style:{flex:1,overflow:"hidden",background:"radial-gradient(circle at top, #f8fbff 0%, #edf2f8 100%)",position:"relative",cursor:spaceHeld||isPanning?"grab":"default",backgroundImage:"radial-gradient(circle,#d8e0ea 1px,transparent 1px)",backgroundSize:"24px 24px"}},
         React.createElement("div",{ref:viewportRef,style:{transform:"translate("+pan.x+"px,"+pan.y+"px) scale("+zoom+")",transformOrigin:"0 0",display:"flex",flexWrap:"wrap",gap:20,alignItems:"flex-start",padding:40,width:"max-content"}},
           visSizes.length===0?React.createElement("div",{style:{color:"#333",fontSize:13,padding:40}},"← 좌측에서 사이즈를 선택하세요"):visSizes.map(function(s){return renderBoard(s)})
         ),
         /* Context Menu (우클릭 메뉴) */
-        ctxMenu&&React.createElement("div",{style:{position:"fixed",left:ctxMenu.x,top:ctxMenu.y,background:"#222",border:"1px solid #444",borderRadius:4,padding:4,zIndex:9999,boxShadow:"0 4px 12px rgba(0,0,0,0.5)",width:150,fontFamily:"'Noto Sans KR',sans-serif"}},
+        ctxMenu&&React.createElement("div",{style:{position:"fixed",left:ctxMenu.x,top:ctxMenu.y,background:MD.surface,border:"1px solid "+MD.line,borderRadius:16,padding:6,zIndex:9999,boxShadow:MD.shadow,width:190,fontFamily:"Roboto,'Noto Sans KR',sans-serif"}},
           ctxMenu.lid ? React.createElement(React.Fragment,null,
             React.createElement("div",{className:"ctx-item",onClick:function(){
               saveHistory(); setLayers(function(prev){var idx=prev.findIndex(function(l){return l.id===ctxMenu.lid});if(idx<0)return prev;var n=prev.slice();n[idx]=Object.assign({},n[idx],{zIndex:n[idx].zIndex+1});return n}); setCtxMenu(null);
@@ -832,8 +861,8 @@ export default function App(){
             })(),
             React.createElement("div",{style:{height:1,background:"#444",margin:"4px 0"}}),
             React.createElement("div",{className:"ctx-item danger",onClick:function(){
-              if(layers.find(function(l){return l.id===ctxMenu.lid}).type==="text"){ saveHistory();setLayers(function(p){return p.filter(function(l){return l.id!==ctxMenu.lid})});setActiveEl(null);setSelectedEls([]);setCtxMenu(null); }
-            }},"🗑 삭제")
+              saveHistory(); removeLayerFromBoard(ctxMenu.sid, ctxMenu.lid); setCtxMenu(null);
+            }},"🗑 이 보드에서 삭제")
           ) : React.createElement(React.Fragment,null,
             React.createElement("div",{className:"ctx-item",onClick:function(){
               saveHistory(); setBoardDefaults(function(p){var n=Object.assign({},p);n[ctxMenu.sid]=overrides[ctxMenu.sid]||{};return n;}); setCtxMenu(null);
@@ -846,7 +875,7 @@ export default function App(){
       ),
 
       /* RIGHT */
-      React.createElement("div",{style:{width:240,background:"#111",borderLeft:"1px solid #1a1a1a",overflowY:"auto",flexShrink:0,display:"flex",flexDirection:"column"}},
+      React.createElement("div",{style:{width:280,background:MD.surface,borderLeft:"1px solid "+MD.line,overflowY:"auto",flexShrink:0,display:"flex",flexDirection:"column",boxShadow:"inset 1px 0 0 rgba(255,255,255,.8)"}},
         
         /* 다중 선택 전용 UI 패널 */
         selectedEls.length > 1 && activeBoard && React.createElement("div", {style:{padding:10, borderBottom:"1px solid #1a1a1a", background:"rgba(0,212,255,0.05)"}},
@@ -978,11 +1007,10 @@ export default function App(){
                 React.createElement("div",{style:{padding:5,background:"#0a0a0a",borderRadius:3,border:"1px solid #1a1a1a",display:"flex",justifyContent:"space-between",alignItems:"center"}},React.createElement("span",{style:{fontSize:9,color:"#444"}},"대비율"),React.createElement("span",{style:{fontSize:10,fontWeight:700,color:crVal>=4.5?"#4ade80":crVal>=3?"#fbbf24":"#ef4444"}},crVal.toFixed(1)+":1 "+(crVal>=4.5?"✅":crVal>=3?"⚠️":"❌")))
               ),
               React.createElement("div",{style:{padding:10}},
-                React.createElement("button",{onClick:function(){if(activeLayerObj.type==="text"){
+                React.createElement("button",{onClick:function(){if(activeLayerObj){
                   saveHistory();
-                  setLayers(function(p){return p.filter(function(l){return l.id!==activeEl})});
-                  setActiveEl(null); setSelectedEls([]);
-                }},style:{width:"100%",padding:"4px",border:"1px solid #2a1515",borderRadius:3,background:"rgba(255,0,0,.04)",color:"#c44",cursor:"pointer",fontSize:10,fontFamily:"inherit"}},"레이어 삭제")
+                  removeLayerFromBoard(activeBoard, activeEl);
+                }},style:{width:"100%",padding:"8px 10px",border:"1px solid "+MD.dangerSoft,borderRadius:12,background:MD.dangerSoft,color:MD.danger,cursor:"pointer",fontSize:11,fontWeight:700,fontFamily:"inherit"}},"이 보드에서 레이어 삭제")
               )
             )
           : (!activeBoard ? React.createElement("div",{style:{padding:16,color:"#333",fontSize:11,textAlign:"center",marginTop:20}},"아트보드나 요소를 클릭하세요") : null),
@@ -994,13 +1022,13 @@ export default function App(){
       )
     ),
 
-    React.createElement("div",{style:{height:180,background:"#0d0d0d",borderTop:"1px solid #1a1a1a",display:"flex",flexDirection:"column",flexShrink:0}},
-      React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,padding:"10px 12px 8px",borderBottom:"1px solid #151515"}},
+    React.createElement("div",{style:{height:200,background:MD.surface,borderTop:"1px solid "+MD.line,display:"flex",flexDirection:"column",flexShrink:0,boxShadow:"0 -4px 16px rgba(15,23,42,.04)"}},
+      React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,padding:"14px 16px 10px",borderBottom:"1px solid "+MD.line}},
         React.createElement("div",{style:{fontSize:10,color:"#666",textTransform:"uppercase",letterSpacing:".08em",fontWeight:700}},"Asset Tray"),
-        React.createElement("div",{style:{fontSize:10,color:"#444"}},"썸네일 클릭 시 메인 비주얼 즉시 교체"),
-        React.createElement("div",{style:{marginLeft:"auto",fontSize:10,color:assetLoading?"#00d4ff":"#555"}},assetLoading?"불러오는 중...":assetMessage)
+        React.createElement("div",{style:{fontSize:11,color:MD.muted}},"썸네일 클릭 시 메인 비주얼 즉시 교체"),
+        React.createElement("div",{style:{marginLeft:"auto",fontSize:11,color:assetLoading?MD.primary:MD.muted}},assetLoading?"불러오는 중...":assetMessage)
       ),
-      React.createElement("div",{style:{display:"flex",gap:12,padding:"10px 12px",minHeight:0,flex:1}},
+      React.createElement("div",{style:{display:"flex",gap:14,padding:"14px 16px",minHeight:0,flex:1}},
         React.createElement("div",{style:{width:260,display:"flex",flexDirection:"column",gap:8,flexShrink:0}},
           React.createElement("button",{onClick:function(){assetFileRef.current&&assetFileRef.current.click();},style:{padding:"8px 10px",borderRadius:4,border:"1px dashed #333",background:"#111",color:"#aaa",cursor:"pointer",fontSize:11,fontFamily:"inherit"}},"+ 로컬 에셋 추가"),
           React.createElement("input",{ref:assetFileRef,type:"file",accept:"image/*",multiple:true,onChange:function(e){handleAssetFiles(e.target.files);},style:{display:"none"}}),
