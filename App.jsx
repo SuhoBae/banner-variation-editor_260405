@@ -1,0 +1,817 @@
+import React, { useState, useRef, useEffect, useCallback } from "react";
+
+var FONTS = [
+  {family:"Noto Sans KR",weights:[300,400,500,700,800,900]},{family:"Nanum Gothic",weights:[400,700,800]},
+  {family:"Noto Serif KR",weights:[300,400,500,700,900]},{family:"Black Han Sans",weights:[400]},
+  {family:"Roboto",weights:[300,400,500,700,900]},{family:"Montserrat",weights:[300,400,500,600,700,800,900]},
+  {family:"Playfair Display",weights:[400,500,600,700,800,900]},{family:"Oswald",weights:[300,400,500,600,700]},
+];
+var PLATFORMS = {
+  gdn:{name:"Google Display",icon:"📐",sizes:[
+    {id:"g1",w:300,h:250,label:"Medium Rect",safe:{t:10,b:10,l:10,r:10,pct:true}},
+    {id:"g2",w:336,h:280,label:"Large Rect",safe:{t:10,b:10,l:10,r:10,pct:true}},
+    {id:"g3",w:728,h:90,label:"Leaderboard",safe:{t:10,b:10,l:10,r:10,pct:true}},
+    {id:"g4",w:320,h:50,label:"Mobile Banner",safe:{t:10,b:10,l:10,r:10,pct:true}},
+    {id:"g5",w:160,h:600,label:"Skyscraper",safe:{t:10,b:10,l:10,r:10,pct:true}},
+    {id:"g6",w:300,h:600,label:"Half Page",safe:{t:10,b:10,l:10,r:10,pct:true}},
+    {id:"g7",w:970,h:250,label:"Billboard",safe:{t:10,b:10,l:10,r:10,pct:true}},
+    {id:"g8",w:320,h:100,label:"Lg Mobile",safe:{t:10,b:10,l:10,r:10,pct:true}},
+  ]},
+  ig:{name:"Instagram",icon:"📸",sizes:[
+    {id:"i1",w:1080,h:1080,label:"피드 1:1",safe:{t:0,b:0,l:0,r:0,pct:false}},
+    {id:"i2",w:1080,h:1350,label:"피드 4:5",safe:{t:0,b:60,l:0,r:0,pct:false}},
+    {id:"i3",w:1080,h:1920,label:"스토리 9:16",safe:{t:250,b:280,l:0,r:0,pct:false}},
+    {id:"i4",w:1200,h:628,label:"가로 1.91:1",safe:{t:0,b:0,l:60,r:60,pct:false}},
+  ]},
+  yt:{name:"YouTube",icon:"▶",sizes:[
+    {id:"y1",w:1280,h:720,label:"썸네일 16:9",safe:{t:0,b:70,l:0,r:120,pct:false}},
+    {id:"y2",w:2560,h:1440,label:"채널 배너",safe:{t:155,b:155,l:424,r:424,pct:false}},
+  ]},
+};
+var ALL_SIZES=Object.values(PLATFORMS).flatMap(function(p){return p.sizes});
+var BASE_W=1080;
+var ROLES=[{key:"headline",label:"Headline",min:10},{key:"subheadline",label:"Sub-headline",min:8},{key:"cta",label:"CTA Button",min:10},{key:"legal",label:"법적 고지",min:7}];
+
+var THEMES = [
+  {name:"LG 레드", bg:"#A50034", text:"#ffffff", ctaBg:"#111111", ctaText:"#ffffff", font:"Noto Sans KR"},
+  {name:"다크 모던", bg:"#0f0f0f", text:"#ffffff", ctaBg:"#00d4ff", ctaText:"#000000", font:"Montserrat"},
+  {name:"클린 화이트", bg:"#f5f5f5", text:"#111111", ctaBg:"#0071e3", ctaText:"#ffffff", font:"Roboto"},
+  {name:"네온 팝", bg:"#2d1b69", text:"#00ffcc", ctaBg:"#ff00ff", ctaText:"#000000", font:"Black Han Sans"},
+];
+
+function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+function getSafe(sz){var s=sz.safe;return s.pct?{t:sz.h*s.t/100,b:sz.h*s.b/100,l:sz.w*s.l/100,r:sz.w*s.r/100}:{t:s.t,b:s.b,l:s.l,r:s.r}}
+function contrast(a,b){function l(h){var v=[h.slice(1,3),h.slice(3,5),h.slice(5,7)].map(function(c){var x=parseInt(c,16)/255;return x<=.03928?x/12.92:Math.pow((x+.055)/1.055,2.4)});return .2126*v[0]+.7152*v[1]+.0722*v[2]}var l1=l(a),l2=l(b);return(Math.max(l1,l2)+.05)/(Math.min(l1,l2)+.05)}
+function scaleFS(base,tw,min){return Math.max(min,Math.round(base*tw/BASE_W))}
+
+function computeLayout(w,h){
+  var r=w/h;
+  if(r>=2.5) return {mode:"h",image:{x:0,y:0,w:30,h:100},headline:{x:33,y:25,w:40,h:25},subheadline:{x:33,y:55,w:40,h:20},cta:{x:75,y:35,w:20,h:30}};
+  if(r>=1.25) return {mode:"h",image:{x:0,y:0,w:50,h:100},headline:{x:55,y:20,w:40,h:25},subheadline:{x:55,y:50,w:40,h:15},cta:{x:55,y:70,w:40,h:15}};
+  return {mode:"v",image:{x:0,y:0,w:100,h:50},headline:{x:5,y:58,w:90,h:12},subheadline:{x:5,y:72,w:90,h:8},cta:{x:5,y:83,w:90,h:12}};
+}
+
+function layoutRegion(lo,role){if(role==="headline")return lo.headline;if(role==="subheadline")return lo.subheadline;if(role==="cta")return lo.cta;if(role==="legal")return{x:lo.cta.x,y:lo.cta.y+lo.cta.h+1,w:lo.cta.w,h:8};return lo.headline}
+var iS={background:"#0a0a0a",border:"1px solid #222",borderRadius:3,padding:"3px 6px",color:"#ccc",fontSize:10,fontFamily:"'JetBrains Mono',monospace",width:"100%",boxSizing:"border-box"};
+var sT={fontSize:10,color:"#555",textTransform:"uppercase",letterSpacing:".08em",marginBottom:8,fontWeight:600};
+var hSt={width:10,height:10,background:"#00d4ff",border:"1.5px solid #fff",borderRadius:2,position:"absolute",zIndex:30,boxShadow:"0 0 6px rgba(0,0,0,.6)"};
+function NI(p){return React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4,marginBottom:5}},React.createElement("span",{style:{fontSize:10,color:"#555",width:48,flexShrink:0}},p.label),React.createElement("input",{type:"number",min:p.min,max:p.max,step:p.step||1,value:Math.round(p.value*100)/100,onFocus:p.onFocus,onChange:function(e){p.onChange(+e.target.value)},style:Object.assign({},iS,{flex:1})}),p.unit&&React.createElement("span",{style:{fontSize:9,color:"#444",width:16}},p.unit))}
+
+export default function App(){
+  var fileRef=useRef(null),imgObjRef=useRef(null),dragRef=useRef(null),canvasRef=useRef(null),panRef=useRef(null);
+  var _bg=useState("#0f0f0f");var bgColor=_bg[0],setBgColor=_bg[1];
+  var _z=useState(1);var zoom=_z[0],setZoom=_z[1];
+  var _pan=useState({x:0,y:0});var pan=_pan[0],setPan=_pan[1];
+  var _ss=useState(true);var showSafe=_ss[0],setShowSafe=_ss[1];
+  var _sg=useState(false);var showGrid=_sg[0],setShowGrid=_sg[1];
+  var _clip=useState(false);var clipBoard=_clip[0],setClipBoard=_clip[1]; 
+  var _sp=useState(false);var spaceHeld=_sp[0],setSpaceHeld=_sp[1];
+  var _ip=useState(false);var isPanning=_ip[0],setIsPanning=_ip[1];
+  var _ctx=useState(null);var ctxMenu=_ctx[0],setCtxMenu=_ctx[1]; 
+
+  var _layers=useState([
+    {id:"img1",type:"image",label:"메인 비주얼",src:null,imgW:0,imgH:0,visible:true,zIndex:0},
+    {id:"l1",type:"text",role:"headline",content:"여름맞이 최대 50% 할인",font:"Noto Sans KR",size:48,weight:800,ls:-.02,lh:1.25,color:"#FFFFFF",align:"center",visible:true,zIndex:1},
+    {id:"l2",type:"text",role:"subheadline",content:"LG 베스트샵 전 제품",font:"Noto Sans KR",size:24,weight:500,ls:0,lh:1.4,color:"#CCCCCC",align:"center",visible:true,zIndex:2},
+    {id:"l3",type:"text",role:"cta",content:"자세히 보기 →",font:"Noto Sans KR",size:20,weight:700,ls:.02,lh:1,color:"#FFFFFF",align:"center",visible:true,bg:"#A50034",zIndex:3},
+  ]);var layers=_layers[0],setLayers=_layers[1];
+  
+  var _ov=useState({});var overrides=_ov[0],setOverrides=_ov[1];
+  var _bd=useState({});var boardDefaults=_bd[0],setBoardDefaults=_bd[1];
+  
+  var _cfnt=useState([]); var customFonts=_cfnt[0],setCustomFonts=_cfnt[1];
+  var _cfntIn=useState(""); var customFontInput=_cfntIn[0],setCustomFontInput=_cfntIn[1];
+  
+  var _sumId=useState(null); var summarizingId=_sumId[0], setSummarizingId=_sumId[1]; // 에이전트 요약 상태
+  
+  var histRef = useRef({ past: [], future: [] });
+  var stateRef = useRef({ layers: layers, overrides: overrides, bgColor: bgColor, boardDefaults: boardDefaults, customFonts: customFonts });
+  var _hc=useState(0); var setHistCount=_hc[1];
+  
+  useEffect(function() {
+    stateRef.current = { layers: layers, overrides: overrides, bgColor: bgColor, boardDefaults: boardDefaults, customFonts: customFonts };
+  }, [layers, overrides, bgColor, boardDefaults, customFonts]);
+
+  var saveHistory = useCallback(function() {
+    var st = JSON.parse(JSON.stringify(stateRef.current));
+    var p = histRef.current.past;
+    if(p.length === 0 || JSON.stringify(p[p.length-1]) !== JSON.stringify(st)) {
+      p.push(st);
+      if(p.length > 50) p.shift();
+      histRef.current.future = [];
+      setHistCount(function(c){return c+1});
+    }
+  }, []);
+
+  var undo = useCallback(function() {
+    var p = histRef.current.past;
+    if (p.length === 0) return;
+    var prev = p.pop();
+    histRef.current.future.push(JSON.parse(JSON.stringify(stateRef.current)));
+    setLayers(prev.layers);
+    setOverrides(prev.overrides);
+    setBgColor(prev.bgColor);
+    setBoardDefaults(prev.boardDefaults || {});
+    setCustomFonts(prev.customFonts || []);
+    setHistCount(function(c){return c+1});
+    setActiveEl(null); setSelectedEls([]);
+    setCtxMenu(null);
+  }, []);
+
+  var redo = useCallback(function() {
+    var f = histRef.current.future;
+    if (f.length === 0) return;
+    var next = f.pop();
+    histRef.current.past.push(JSON.parse(JSON.stringify(stateRef.current)));
+    setLayers(next.layers);
+    setOverrides(next.overrides);
+    setBgColor(next.bgColor);
+    setBoardDefaults(next.boardDefaults || {});
+    setCustomFonts(next.customFonts || []);
+    setHistCount(function(c){return c+1});
+    setActiveEl(null); setSelectedEls([]);
+    setCtxMenu(null);
+  }, []);
+
+  var _sel=useState(["g1","g3","g4","i1","i3","y1"]);var selIds=_sel[0],setSelIds=_sel[1];
+  var _cs=useState([]);var customSizes=_cs[0],setCustomSizes=_cs[1];
+  var _cf=useState({name:"",w:"",h:"",st:"0",sb:"0",sl:"0",sr:"0"});var customForm=_cf[0],setCustomForm=_cf[1];
+  var _scf=useState(false);var showCF=_scf[0],setShowCF=_scf[1];
+  
+  var _ab=useState(null);var activeBoard=_ab[0],setActiveBoard=_ab[1];
+  var _selEls=useState([]);var selectedEls=_selEls[0],setSelectedEls=_selEls[1];
+  var _ae=useState(null);var activeEl=_ae[0],setActiveEl=_ae[1];
+  var _ec=useState({});var exportChecked=_ec[0],setExportChecked=_ec[1];
+  var _tk=useState(0);var setTick=_tk[1];
+  
+  var allSizes=ALL_SIZES.concat(customSizes);
+  var visSizes=allSizes.filter(function(s){return selIds.indexOf(s.id)!==-1});
+  var imgLayer=layers.find(function(l){return l.type==="image"});
+  var activeLayerObj=layers.find(function(l){return l.id===activeEl});
+  var allFontsList = FONTS.concat(customFonts);
+
+  useEffect(function(){
+    var l=document.createElement("link");l.href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;800;900&family=Nanum+Gothic:wght@400;700;800&family=Noto+Serif+KR:wght@300;400;500;700;900&family=Black+Han+Sans&family=Roboto:wght@300;400;500;700;900&family=Montserrat:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@400;500;600;700;800;900&family=Oswald:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap";l.rel="stylesheet";document.head.appendChild(l);
+    var s=document.createElement("style");s.innerHTML=".ctx-item { padding: 6px 10px; font-size: 11px; color: #ccc; cursor: pointer; border-radius: 2px; } .ctx-item:hover { background: #00d4ff; color: #000; } .ctx-item.danger:hover { background: #f44; color: #fff; }";document.head.appendChild(s);
+  },[]);
+  
+  useEffect(function(){
+    function kb(e){
+      if(e.code==="Space"&&!e.repeat) {
+        var tag = document.activeElement ? document.activeElement.tagName : "";
+        if(tag!=="TEXTAREA" && tag!=="INPUT") { e.preventDefault(); setSpaceHeld(true); }
+      }
+      if((e.ctrlKey||e.metaKey)&&e.key==='z'){
+        e.preventDefault();
+        if(e.shiftKey) redo(); else undo();
+      }
+      if((e.ctrlKey||e.metaKey)&&e.key==='y'){
+        e.preventDefault();
+        redo();
+      }
+    }
+    function ku(e){if(e.code==="Space"){setSpaceHeld(false);setIsPanning(false)}}
+    function clickAway(){setCtxMenu(null)}
+    window.addEventListener("keydown",kb);
+    window.addEventListener("keyup",ku);
+    window.addEventListener("click",clickAway);
+    return function(){window.removeEventListener("keydown",kb);window.removeEventListener("keyup",ku);window.removeEventListener("click",clickAway);};
+  },[undo, redo]);
+
+  useEffect(function(){var el=canvasRef.current;if(!el)return;function onW(e){e.preventDefault();var d=e.deltaY>0?-0.08:0.08;setZoom(function(z){return clamp(z+d,.1,5)})}el.addEventListener("wheel",onW,{passive:false});return function(){el.removeEventListener("wheel",onW)}},[]);
+
+  var setOv=useCallback(function(sid,lid,props){setOverrides(function(prev){var bo=prev[sid]||{};var lo=bo[lid]||{};var nb=Object.assign({},bo);nb[lid]=Object.assign({},lo,props);var n=Object.assign({},prev);n[sid]=nb;return n})},[]);
+  function getOv(sid,lid){
+    var def = boardDefaults[sid]?.[lid] || {};
+    var ov = overrides[sid]?.[lid] || {};
+    return Object.assign({}, def, ov);
+  }
+  
+  function getElRect(sid,layer){
+    var sz=allSizes.find(function(s){return s.id===sid});if(!sz)return{x:0,y:0,w:100,h:100,fs:12};
+    var ov=getOv(sid,layer.id);
+    var sa=getSafe(sz);
+    var sw=sz.w-sa.l-sa.r, sh=sz.h-sa.t-sa.b;
+    var lo=computeLayout(sw,sh);
+    
+    if(layer.type==="image"){
+      var reg=lo.image;
+      var regW_px = (reg.w/100)*sw;
+      var regH_px = (reg.h/100)*sh;
+      var size_px = Math.min(regW_px, regH_px);
+      var cx_px = sa.l + (reg.x/100)*sw + regW_px/2;
+      var cy_px = sa.t + (reg.y/100)*sh + regH_px/2;
+      
+      var defaultRw = (size_px / sz.w) * 100;
+      var defaultRh = (size_px / sz.h) * 100;
+      var defaultRx = (cx_px - size_px/2) / sz.w * 100;
+      var defaultRy = (cy_px - size_px/2) / sz.h * 100;
+
+      return {
+        x: ov.x != null ? ov.x : defaultRx,
+        y: ov.y != null ? ov.y : defaultRy,
+        w: ov.w != null ? ov.w : defaultRw,
+        h: ov.h != null ? ov.h : defaultRh
+      };
+    }
+    
+    var tReg=layoutRegion(lo,layer.role);
+    var rx=(sa.l+(tReg.x/100)*sw)/sz.w*100;
+    var ry=(sa.t+(tReg.y/100)*sh)/sz.h*100;
+    var rw=(tReg.w/100)*sw/sz.w*100;
+    var rh=(tReg.h/100)*sh/sz.h*100;
+
+    var rm=ROLES.find(function(r){return r.key===layer.role});
+    var fs=ov.fs!=null?ov.fs:scaleFS(layer.size,sw,rm?rm.min:8);
+    return{x:ov.x!=null?ov.x:rx,y:ov.y!=null?ov.y:ry,w:ov.w!=null?ov.w:rw,h:ov.h!=null?ov.h:rh,fs:fs};
+  }
+
+  function alignSelected(type){
+    if(!activeBoard || selectedEls.length===0) return;
+    saveHistory();
+    
+    var sz=allSizes.find(function(s){return s.id===activeBoard}); if(!sz) return;
+    var sa=getSafe(sz);
+    var sPx = (sa.l / sz.w) * 100;
+    var sPy = (sa.t / sz.h) * 100;
+    var sPw = ((sz.w - sa.l - sa.r) / sz.w) * 100;
+    var sPh = ((sz.h - sa.t - sa.b) / sz.h) * 100;
+
+    if(selectedEls.length === 1) {
+      var rect = getElRect(activeBoard, activeLayerObj);
+      var boardEl = document.querySelector('[data-bid="'+activeBoard+'"]');
+      var myEl = document.getElementById("layer-"+activeBoard+"-"+activeEl);
+      if(!boardEl || !myEl) return;
+      var boardRect = boardEl.getBoundingClientRect();
+      var r = myEl.getBoundingClientRect();
+      var pw = (r.width / boardRect.width) * 100;
+      var ph = (r.height / boardRect.height) * 100;
+      var px = ((r.left - boardRect.left) / boardRect.width) * 100;
+      var py = ((r.top - boardRect.top) / boardRect.height) * 100;
+
+      var dx = 0, dy = 0;
+      if(type === 'L') dx = sPx - px;
+      if(type === 'C') dx = (sPx + sPw/2 - (pw / 2)) - px;
+      if(type === 'R') dx = (sPx + sPw - pw) - px;
+      if(type === 'T') dy = sPy - py;
+      if(type === 'M') dy = (sPy + sPh/2 - (ph / 2)) - py;
+      if(type === 'B') dy = (sPy + sPh - ph) - py;
+
+      setOv(activeBoard, activeEl, {x: rect.x + dx, y: rect.y + dy});
+    } else {
+       var boardEl = document.querySelector('[data-bid="'+activeBoard+'"]');
+       if(!boardEl) return;
+       var boardRect = boardEl.getBoundingClientRect();
+       var rects = selectedEls.map(function(id){
+         var el = document.getElementById("layer-"+activeBoard+"-"+id);
+         if(!el) return null;
+         var r = el.getBoundingClientRect();
+         return {
+           id: id,
+           px: ((r.left - boardRect.left) / boardRect.width) * 100,
+           py: ((r.top - boardRect.top) / boardRect.height) * 100,
+           pw: (r.width / boardRect.width) * 100,
+           ph: (r.height / boardRect.height) * 100,
+           stateRect: getElRect(activeBoard, layers.find(function(l){return l.id===id}))
+         };
+       }).filter(Boolean);
+
+       if(rects.length === 0) return;
+       var minX = Math.min.apply(null, rects.map(function(obj){return obj.px}));
+       var maxX = Math.max.apply(null, rects.map(function(obj){return obj.px + obj.pw}));
+       var minY = Math.min.apply(null, rects.map(function(obj){return obj.py}));
+       var maxY = Math.max.apply(null, rects.map(function(obj){return obj.py + obj.ph}));
+
+       rects.forEach(function(obj){
+         var dx = 0, dy = 0;
+         if(type==='L') dx = minX - obj.px;
+         if(type==='C') dx = ((minX+maxX)/2 - (obj.pw/2)) - obj.px;
+         if(type==='R') dx = (maxX - obj.pw) - obj.px;
+         if(type==='T') dy = minY - obj.py;
+         if(type==='M') dy = ((minY+maxY)/2 - (obj.ph/2)) - obj.py;
+         if(type==='B') dy = (maxY - obj.ph) - obj.py;
+
+         setOv(activeBoard, obj.id, {x: obj.stateRect.x + dx, y: obj.stateRect.y + dy});
+       });
+    }
+  }
+
+  useEffect(function(){
+    function onMove(e){
+      var p=panRef.current;if(p&&p.type==="pan"){e.preventDefault();setPan({x:p.sx+(e.clientX-p.mx),y:p.sy+(e.clientY-p.my)});return}
+      var d=dragRef.current;if(!d)return;e.preventDefault();
+      var dx=e.clientX-d.mx,dy=e.clientY-d.my;
+      var pxZ=(dx/(d.bw*zoom))*100,pyZ=(dy/(d.bh*zoom))*100;
+      if(d.act==="move"){
+        d.sps.forEach(function(obj){
+          setOv(d.sid, obj.id, {x: clamp(obj.r.x+pxZ,-50,150), y: clamp(obj.r.y+pyZ,-50,150)});
+        });
+      }
+      else{
+        var sp = d.sps.find(function(s){return s.id===d.lid}).r;
+        if(d.lid.startsWith("img")){
+          var sz = allSizes.find(function(s){return s.id===d.sid});
+          var newW = Math.max(5, sp.w + pxZ);
+          var newH = newW * (sz.w / sz.h); 
+          setOv(d.sid, d.lid, {w: newW, h: newH});
+        }
+        else{var sc=1+pxZ/80;setOv(d.sid,d.lid,{fs:Math.round(clamp(sp.fs*sc,6,300))})}
+      }
+      setTick(function(c){return c+1});
+    }
+    function onUp(){panRef.current=null;setIsPanning(false);if(dragRef.current){dragRef.current=null;document.body.style.cursor=""}setTick(function(c){return c+1})}
+    window.addEventListener("mousemove",onMove);window.addEventListener("mouseup",onUp);
+    return function(){window.removeEventListener("mousemove",onMove);window.removeEventListener("mouseup",onUp)};
+  },[zoom,setOv]);
+
+  function beginDrag(e,sid,lid,act){
+    if(e.button !== 0 || spaceHeld) return; // 좌클릭이 아니거나 스페이스바 누른 상태면 캔버스 패닝으로 넘김
+    e.stopPropagation();e.preventDefault();
+    saveHistory(); 
+    var el=e.target;while(el&&!el.getAttribute("data-bid"))el=el.parentElement;if(!el)return;
+    var rect=el.getBoundingClientRect();
+    
+    var newSel = selectedEls.slice();
+    if(act==="move") {
+      if (e.shiftKey) {
+        if(newSel.indexOf(lid) === -1) newSel.push(lid);
+        else newSel = newSel.filter(function(x){return x!==lid});
+      } else {
+        if(newSel.indexOf(lid) === -1) newSel = [lid];
+      }
+    } else {
+      newSel = [lid]; 
+    }
+    
+    setSelectedEls(newSel); 
+    setActiveEl(newSel.length > 0 ? newSel[newSel.length-1] : null); 
+    setActiveBoard(sid);
+    
+    var sps = newSel.map(function(id){ return {id:id, r:Object.assign({}, getElRect(sid, layers.find(function(l){return l.id===id})))}; });
+    dragRef.current={sid:sid,lid:lid,act:act,mx:e.clientX,my:e.clientY,bw:rect.width/zoom,bh:rect.height/zoom, sps:sps};
+    document.body.style.cursor=act==="move"?"grabbing":"nwse-resize";
+  }
+
+  function handleContextMenuLayer(e, sid, lid){
+    if(spaceHeld) return;
+    e.preventDefault(); e.stopPropagation();
+    setActiveBoard(sid); setActiveEl(lid); setSelectedEls([lid]);
+    setCtxMenu({x: e.clientX, y: e.clientY, sid: sid, lid: lid});
+  }
+
+  function handleContextMenuBoard(e, sid){
+    if(spaceHeld) return;
+    e.preventDefault(); e.stopPropagation();
+    if(e.target.getAttribute("data-bid")===sid){
+      setActiveBoard(sid); setActiveEl(null); setSelectedEls([]);
+      setCtxMenu({x: e.clientX, y: e.clientY, sid: sid, lid: null});
+    }
+  }
+
+  function startPan(e){
+    var tag = e.target.tagName;
+    if(tag==="INPUT" || tag==="TEXTAREA" || tag==="SELECT") return;
+    // 휠클릭(1) 이거나, 스페이스바+좌클릭(0) 인 경우에만 패닝 시작
+    if(e.button===1 || (e.button===0 && spaceHeld)){
+      e.preventDefault();setIsPanning(true);panRef.current={type:"pan",mx:e.clientX,my:e.clientY,sx:pan.x,sy:pan.y};
+    }
+  }
+  function handleFile(file){if(!file)return;saveHistory();var reader=new FileReader();reader.onload=function(ev){var img=new Image();img.onload=function(){imgObjRef.current=img;setLayers(function(p){return p.map(function(l){return l.type==="image"?Object.assign({},l,{src:ev.target.result,imgW:img.naturalWidth,imgH:img.naturalHeight}):l})})};img.src=ev.target.result};reader.readAsDataURL(file)}
+  
+  function applyTheme(t){
+    saveHistory();
+    setBgColor(t.bg);
+    setLayers(function(prev){
+      return prev.map(function(l){
+        if(l.type==="text"){
+          var n = Object.assign({}, l, {font: t.font});
+          if(l.role==="cta"){ n.bg = t.ctaBg; n.color = t.ctaText; }
+          else { n.color = t.text; }
+          return n;
+        }
+        return l;
+      });
+    });
+  }
+
+  function handleAddCustomFont() {
+    if(!customFontInput) return;
+    var family = customFontInput.trim();
+    if(allFontsList.find(function(f){return f.family===family})) {
+      setCustomFontInput(""); return;
+    }
+    saveHistory();
+    var link = document.createElement("link");
+    link.href = "https://fonts.googleapis.com/css2?family=" + family.replace(/\s+/g, "+") + ":wght@300;400;500;700;900&display=swap";
+    link.rel = "stylesheet";
+    document.head.appendChild(link);
+    setCustomFonts(function(p){return p.concat([{family: family, weights: [300,400,500,700,900]}])});
+    setCustomFontInput("");
+  }
+
+  // [에이전트 기반 자동 텍스트 요약 시뮬레이션]
+  function runAgenticSummary(lid, currentText) {
+    if(!currentText || currentText.trim().length === 0) return;
+    setSummarizingId(lid);
+    
+    // 에이전트 연동을 가정한 비동기 처리 딜레이 (1.5초)
+    setTimeout(function() {
+      saveHistory();
+      var lines = currentText.split("\n");
+      var summary = lines.map(function(l) {
+        // 간단한 정규식으로 불필요한 수식어 컷팅 시뮬레이션
+        return l.replace(/최대|전 제품|자세히 보기|지금 바로/g, "").trim().substring(0, 15);
+      }).join("\n");
+      
+      if(summary.length > currentText.length) summary = currentText.substring(0, 8) + "..";
+      if(summary === currentText) summary = summary + " (AI 요약됨)";
+      
+      updateLayer(lid, "content", summary);
+      setSummarizingId(null);
+    }, 1500);
+  }
+
+  function exportOne(sz){return document.fonts.ready.then(function(){var c=document.createElement("canvas");c.width=sz.w;c.height=sz.h;var ctx=c.getContext("2d");ctx.fillStyle=bgColor;ctx.fillRect(0,0,sz.w,sz.h);var sorted=layers.slice().sort(function(a,b){return a.zIndex-b.zIndex});sorted.forEach(function(layer){
+    var isHidden = overrides[sz.id]?.[layer.id]?.hidden;
+    if(isHidden === undefined) isHidden = boardDefaults[sz.id]?.[layer.id]?.hidden;
+    if(!layer.visible || isHidden) return;
+    var er=getElRect(sz.id,layer);var dx=sz.w*er.x/100,dy=sz.h*er.y/100,dw=sz.w*er.w/100,dh=sz.h*er.h/100;
+    
+    if(layer.type==="image"){
+      if(imgObjRef.current&&layer.src){
+        var nw=imgObjRef.current.naturalWidth,nh=imgObjRef.current.naturalHeight;
+        var ov = getOv(sz.id, layer.id);
+        var imgS = ov.imgS != null ? ov.imgS : 1;
+        var imgX = ov.imgX != null ? ov.imgX : 0;
+        var imgY = ov.imgY != null ? ov.imgY : 0;
+        
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(dx, dy, dw, dh);
+        ctx.clip(); 
+
+        var coverR = Math.max(dw/nw, dh/nh);
+        var baseW = nw * coverR;
+        var baseH = nh * coverR;
+
+        var cx = dx + dw/2 + (dw * imgX / 100);
+        var cy = dy + dh/2 + (dh * imgY / 100);
+
+        var finalW = baseW * imgS;
+        var finalH = baseH * imgS;
+
+        ctx.drawImage(imgObjRef.current, cx - finalW/2, cy - finalH/2, finalW, finalH);
+        ctx.restore();
+      }else{
+        ctx.fillStyle="rgba(255,255,255,0.03)";ctx.fillRect(dx,dy,dw,dh);ctx.strokeStyle="rgba(255,255,255,0.15)";ctx.setLineDash([5,5]);ctx.lineWidth=2;ctx.strokeRect(dx,dy,dw,dh);ctx.setLineDash([]);ctx.fillStyle="rgba(255,255,255,0.3)";var pFs = Math.max(12,dh*0.08);ctx.font="600 "+pFs+'px "Noto Sans KR"';ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText("🖼 640×640",dx+dw/2,dy+dh/2 - pFs*0.7);ctx.font="600 "+(pFs*0.8)+'px "Noto Sans KR"';ctx.fillText("이미지 영역",dx+dw/2,dy+dh/2 + pFs*0.7)
+      }
+    }else if(layer.type==="text"){
+      var fs=er.fs;if(fs<=0)return;ctx.font=layer.weight+" "+fs+'px "'+layer.font+'","Noto Sans KR",sans-serif';var tx,ty=dy+dh/2;if(layer.align==="center"){ctx.textAlign="center";tx=dx+dw/2}else if(layer.align==="right"){ctx.textAlign="right";tx=dx+dw}else{ctx.textAlign="left";tx=dx}if(layer.role==="cta"&&layer.bg){var met=ctx.measureText(layer.content);var pH=fs*0.8,pV=fs*0.3;var bw=met.width+pH*2,bh=fs*1.2+pV*2;var bx=tx-bw/2,by=ty-bh/2;if(layer.align==="left")bx=tx;if(layer.align==="right")bx=tx-bw;ctx.fillStyle=layer.bg;ctx.beginPath();var rd=Math.min(fs*.2,bh/3);ctx.moveTo(bx+rd,by);ctx.lineTo(bx+bw-rd,by);ctx.quadraticCurveTo(bx+bw,by,bx+bw,by+rd);ctx.lineTo(bx+bw,by+bh-rd);ctx.quadraticCurveTo(bx+bw,by+bh,bx+bw-rd,by+bh);ctx.lineTo(bx+rd,by+bh);ctx.quadraticCurveTo(bx,by+bh,bx,by+bh-rd);ctx.lineTo(bx,by+rd);ctx.quadraticCurveTo(bx,by,bx+rd,by);ctx.closePath();ctx.fill();ctx.textBaseline="middle";ctx.fillStyle=layer.color;ctx.fillText(layer.content,tx,ty);}else{ctx.textBaseline="top";ctx.fillStyle=layer.color;var lines=layer.content.split("\n");var lineH=fs*layer.lh;var startY=dy;for(var li=0;li<lines.length;li++){ctx.fillText(lines[li],tx,startY+(li*lineH));}}}});return new Promise(function(resolve){c.toBlob(function(blob){var url=URL.createObjectURL(blob);var a=document.createElement("a");a.href=url;a.download="App_"+sz.w+"x"+sz.h+"_"+sz.label.replace(/[\s/:]+/g,"_")+".png";document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);resolve()},"image/png")})})}
+  
+  function handleExport(){var list=visSizes.filter(function(s){return exportChecked[s.id]});var i=0;(function next(){if(i>=list.length)return;exportOne(list[i]).then(function(){i++;if(i<list.length)setTimeout(next,350)})})()}
+  var exportCount=Object.keys(exportChecked).filter(function(k){return exportChecked[k]}).length;
+  function updateLayer(id,k,v){setLayers(function(p){return p.map(function(l){if(l.id!==id)return l;var n=Object.assign({},l);n[k]=v;return n})})}
+  function toggleSize(id){setSelIds(function(p){return p.indexOf(id)!==-1?p.filter(function(x){return x!==id}):p.concat([id])})}
+  function addCustom(){if(!customForm.name||!customForm.w||!customForm.h)return;var id="c"+Date.now();setCustomSizes(function(p){return p.concat([{id:id,w:+customForm.w,h:+customForm.h,label:customForm.name,safe:{t:+customForm.st,b:+customForm.sb,l:+customForm.sl,r:+customForm.sr,pct:false}}])});setSelIds(function(p){return p.concat([id])});setCustomForm({name:"",w:"",h:"",st:"0",sb:"0",sl:"0",sr:"0"});setShowCF(false)}
+  var crVal=activeLayerObj&&activeLayerObj.type==="text"?contrast(activeLayerObj.color,bgColor):0;
+  var boardScale=.25;
+
+  function renderBoard(sz){
+    var dw=sz.w*boardScale,dh=sz.h*boardScale;var sa=getSafe(sz);var isAct=activeBoard===sz.id;var isExp=!!exportChecked[sz.id];var lo=computeLayout(sz.w,sz.h);
+    return React.createElement("div",{key:sz.id,style:{display:"inline-flex",flexDirection:"column",alignItems:"center",gap:6,flexShrink:0,verticalAlign:"top"}},
+      React.createElement("label",{style:{display:"flex",alignItems:"center",gap:3,fontSize:9,cursor:"pointer",color:isExp?"#00d4ff":"#555",userSelect:"none"}},React.createElement("input",{type:"checkbox",checked:isExp,onChange:function(){setExportChecked(function(p){var n=Object.assign({},p);n[sz.id]=!p[sz.id];return n})},style:{accentColor:"#00d4ff"}}),"Export"),
+      React.createElement("div",{"data-bid":sz.id,
+        onMouseDown:function(e){if(e.button!==0 || spaceHeld)return; if(e.target.getAttribute("data-bid")===sz.id){setActiveBoard(sz.id);setActiveEl(null);setSelectedEls([]);}},
+        onContextMenu:function(e){handleContextMenuBoard(e, sz.id)},
+        style:{width:dw,height:dh,position:"relative",overflow:clipBoard?"hidden":"visible",borderRadius:2,border:isAct?"2px solid #00d4ff":"1px solid #333",background:bgColor,boxSizing:"border-box",boxShadow:isAct?"0 0 12px rgba(0,212,255,.15)":"none"}},
+        layers.filter(function(l){
+          var isHidden = overrides[sz.id]?.[l.id]?.hidden;
+          if(isHidden === undefined) isHidden = boardDefaults[sz.id]?.[l.id]?.hidden;
+          return l.visible && !isHidden;
+        }).map(function(layer){
+          var er=getElRect(sz.id,layer);var isSel=isAct&&selectedEls.indexOf(layer.id)!==-1;
+          
+          if(layer.type==="image"){
+            var imgS = getOv(sz.id, layer.id).imgS ?? 1;
+            var imgX = getOv(sz.id, layer.id).imgX ?? 0;
+            var imgY = getOv(sz.id, layer.id).imgY ?? 0;
+            
+            return React.createElement("div",{key:layer.id,
+              style:{position:"absolute",left:er.x+"%",top:er.y+"%",width:er.w+"%",height:er.h+"%",zIndex:isSel?15:layer.zIndex+2,display:"flex",alignItems:"center",justifyContent:"center",pointerEvents:"none"}}, 
+              React.createElement("div", {id: "layer-"+sz.id+"-"+layer.id, onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")}, onContextMenu:function(e){handleContextMenuLayer(e, sz.id, layer.id)}, style:{position:"relative", display:"flex", width:"100%", height:"100%", maxWidth:"100%", maxHeight:"100%", outline:isSel?"0.5px dashed rgba(0,212,255,.7)": (layer.src?"none":"1px dashed rgba(255,255,255,0.15)"), background:layer.src?"repeating-conic-gradient(#1a1a1a 0% 25%, #151515 0% 50%) 0 0 / 8px 8px" : "rgba(255,255,255,0.03)", pointerEvents:"auto", cursor:spaceHeld?"grab":"move", alignItems:"center", justifyContent:"center", flexDirection:"column"}},
+                layer.src ? React.createElement("div", {style:{width:"100%", height:"100%", overflow:"hidden", borderRadius:2}}, 
+                              React.createElement("img",{src:layer.src,alt:"",draggable:false,style:{width:"100%",height:"100%",objectFit:"cover",transform:"translate("+imgX+"%,"+imgY+"%) scale("+imgS+")",pointerEvents:"none",display:"block"}})
+                            )
+                          : React.createElement(React.Fragment, null, 
+                              React.createElement("span", {style:{color:"rgba(255,255,255,0.4)", fontSize: 13*boardScale, fontWeight:700, pointerEvents:"none", userSelect:"none", marginBottom:4}}, "🖼 640×640"),
+                              React.createElement("span", {style:{color:"rgba(255,255,255,0.3)", fontSize: 10*boardScale, fontWeight:500, pointerEvents:"none", userSelect:"none"}}, "이미지 영역")
+                            ),
+                isSel&&React.createElement(React.Fragment,null,
+                  React.createElement("div",{onMouseDown:function(e){beginDrag(e,sz.id,layer.id,"resize")},style:Object.assign({},hSt,{bottom:-4,right:-4,cursor:"nwse-resize"})}),
+                  React.createElement("div",{onMouseDown:function(e){if(e.button!==0)return; e.stopPropagation();e.preventDefault();saveHistory();setOverrides(function(prev){var n=Object.assign({},prev);if(n[sz.id]){var b=Object.assign({},n[sz.id]);delete b[layer.id];n[sz.id]=b}return n})},style:Object.assign({},hSt,{top:-4,left:-4,cursor:"pointer",background:"#ff4444",fontSize:6,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",width:12,height:12})},"↺")
+                )
+              )
+            );
+          }
+          var dfs=er.fs*boardScale;if(dfs<=0)return null;var isCta=layer.role==="cta"; 
+          return React.createElement("div",{key:layer.id,
+            style:{position:"absolute",left:er.x+"%",top:er.y+"%",width:er.w+"%",height:er.h+"%",display:"flex",alignItems:isCta?"center":"flex-start",justifyContent:layer.align==="center"?"center":layer.align==="right"?"flex-end":"flex-start",zIndex:isSel?15:layer.zIndex+2,userSelect:"none",pointerEvents:"none"}},
+            React.createElement("div",{id: "layer-"+sz.id+"-"+layer.id, onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")}, onContextMenu:function(e){handleContextMenuLayer(e, sz.id, layer.id)}, style:{position:"relative",display:"inline-block",maxWidth:"100%",outline:isSel?"0.5px solid #00d4ff":"none", pointerEvents:"auto", cursor:spaceHeld?"grab":"move", fontFamily:'"'+layer.font+'","Noto Sans KR",sans-serif',fontSize:dfs,fontWeight:layer.weight,letterSpacing:layer.ls+"em",lineHeight:layer.lh,color:layer.color,textAlign:layer.align}},
+              isCta&&layer.bg?React.createElement("span",{style:{background:layer.bg,padding: (6*boardScale)+"px "+(16*boardScale)+"px",borderRadius:4*boardScale,whiteSpace:"nowrap",display:"block"}},layer.content)
+              :React.createElement("span",{style:{whiteSpace:"pre-wrap",wordBreak:"keep-all",display:"block",width:"100%"}},layer.content),
+              isSel&&React.createElement("div",{onMouseDown:function(e){beginDrag(e,sz.id,layer.id,"resize")},style:Object.assign({},hSt,{bottom:-4,right:-4,cursor:"nwse-resize"})})
+            )
+          );
+        }),
+        showSafe&&(sa.t>0||sa.b>0||sa.l>0||sa.r>0)&&React.createElement(React.Fragment,null,
+          sa.t>0&&React.createElement("div",{style:{position:"absolute",top:0,left:0,right:0,height:sa.t*boardScale,background:"rgba(255,40,40,.12)",borderBottom:"1px dashed rgba(255,80,80,.4)",pointerEvents:"none",zIndex:20}}),
+          sa.b>0&&React.createElement("div",{style:{position:"absolute",bottom:0,left:0,right:0,height:sa.b*boardScale,background:"rgba(255,40,40,.12)",borderTop:"1px dashed rgba(255,80,80,.4)",pointerEvents:"none",zIndex:20}}),
+          sa.l>0&&React.createElement("div",{style:{position:"absolute",top:0,left:0,bottom:0,width:sa.l*boardScale,background:"rgba(255,40,40,.12)",borderRight:"1px dashed rgba(255,80,80,.4)",pointerEvents:"none",zIndex:20}}),
+          sa.r>0&&React.createElement("div",{style:{position:"absolute",top:0,right:0,bottom:0,width:sa.r*boardScale,background:"rgba(255,40,40,.12)",borderLeft:"1px dashed rgba(255,80,80,.4)",pointerEvents:"none",zIndex:20}})
+        ),
+        showGrid&&React.createElement("div",{style:{position:"absolute",inset:0,pointerEvents:"none",zIndex:19}},
+          React.createElement("div",{style:{position:"absolute",top:"50%",left:0,right:0,borderTop:"1px dashed rgba(0,212,255,.1)"}}),
+          React.createElement("div",{style:{position:"absolute",left:"50%",top:0,bottom:0,borderLeft:"1px dashed rgba(0,212,255,.1)"}}),
+          React.createElement("div",{style:{position:"absolute",left:lo.image.x+"%",top:lo.image.y+"%",width:lo.image.w+"%",height:lo.image.h+"%",border:"1px dashed rgba(100,200,255,.08)",pointerEvents:"none"}})
+        )
+      ),
+      React.createElement("div",{style:{fontSize:9,fontFamily:"'JetBrains Mono',monospace",textAlign:"center",lineHeight:1.2}},React.createElement("div",{style:{color:isAct?"#00d4ff":"#aaa",fontWeight:600}},sz.w+"×"+sz.h),React.createElement("div",{style:{fontSize:8,color:"#555"}},sz.label))
+    );
+  }
+
+  return React.createElement("div",{style:{width:"100%",minHeight:"100vh",background:"#0a0a0a",color:"#e0e0e0",fontFamily:"'JetBrains Mono','Noto Sans KR',sans-serif",fontSize:12,display:"flex",flexDirection:"column"}},
+
+    /* HEADER */
+    React.createElement("div",{style:{height:44,background:"#111",borderBottom:"1px solid #222",display:"flex",alignItems:"center",padding:"0 12px",gap:8,flexShrink:0}},
+      React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6}},
+        React.createElement("div",{style:{width:22,height:22,borderRadius:5,background:"linear-gradient(135deg,#00d4ff,#A50034)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:900,color:"#fff"}},"A"),
+        React.createElement("span",{style:{fontWeight:700,fontSize:13,color:"#fff"}},"App")
+      ),
+      React.createElement("div",{style:{flex:1}}),
+      
+      /* History UI */
+      React.createElement("button",{onClick:undo, disabled:histRef.current.past.length===0, style:{padding:"3px 8px",borderRadius:3,fontSize:10,border:"none",cursor:histRef.current.past.length===0?"default":"pointer",fontFamily:"inherit",background:"#1a1a1a",color:histRef.current.past.length===0?"#444":"#aaa"}}, "↩ Undo"),
+      React.createElement("button",{onClick:redo, disabled:histRef.current.future.length===0, style:{padding:"3px 8px",borderRadius:3,fontSize:10,border:"none",cursor:histRef.current.future.length===0?"default":"pointer",fontFamily:"inherit",background:"#1a1a1a",color:histRef.current.future.length===0?"#444":"#aaa"}}, "↪ Redo"),
+      React.createElement("div",{style:{width:1,height:16,background:"#222"}}),
+
+      /* Zoom/Pan UI */
+      React.createElement("button",{onClick:function(){setZoom(function(z){return clamp(z-.15,.1,5)})},style:{width:24,height:24,borderRadius:3,border:"1px solid #222",background:"#1a1a1a",color:"#888",cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit"}},"-"),
+      React.createElement("input",{type:"range",min:10,max:300,step:5,value:Math.round(zoom*100),onChange:function(e){setZoom(+e.target.value/100)},style:{width:100,accentColor:"#00d4ff"}}),
+      React.createElement("button",{onClick:function(){setZoom(function(z){return clamp(z+.15,.1,5)})},style:{width:24,height:24,borderRadius:3,border:"1px solid #222",background:"#1a1a1a",color:"#888",cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit"}},"+"),
+      React.createElement("span",{style:{fontSize:10,color:"#888",width:36,textAlign:"center",cursor:"pointer",userSelect:"none"},onClick:function(){setZoom(1);setPan({x:0,y:0})}},Math.round(zoom*100)+"%"),
+      React.createElement("button",{onClick:function(){setZoom(1);setPan({x:0,y:0})},style:{padding:"3px 6px",borderRadius:3,fontSize:9,border:"1px solid #222",cursor:"pointer",fontFamily:"inherit",background:"#1a1a1a",color:"#666"}},"100%"),
+      React.createElement("button",{onClick:function(){setZoom(.5);setPan({x:0,y:0})},style:{padding:"3px 6px",borderRadius:3,fontSize:9,border:"1px solid #222",cursor:"pointer",fontFamily:"inherit",background:"#1a1a1a",color:"#666"}},"50%"),
+      React.createElement("button",{onClick:function(){setZoom(.25)},style:{padding:"3px 6px",borderRadius:3,fontSize:9,border:"1px solid #222",cursor:"pointer",fontFamily:"inherit",background:"#1a1a1a",color:"#666"}},"25%"),
+
+      React.createElement("div",{style:{width:1,height:16,background:"#222"}}),
+      React.createElement("button",{onClick:function(){setClipBoard(!clipBoard)},style:{padding:"3px 8px",borderRadius:3,fontSize:10,border:"none",cursor:"pointer",fontFamily:"inherit",background:clipBoard?"rgba(0,212,255,.12)":"#1a1a1a",color:clipBoard?"#00d4ff":"#555"}}, clipBoard?"✂️ Clip":"👁 Overflow"),
+      React.createElement("button",{onClick:function(){setShowSafe(!showSafe)},style:{padding:"3px 8px",borderRadius:3,fontSize:10,border:"none",cursor:"pointer",fontFamily:"inherit",background:showSafe?"rgba(0,212,255,.12)":"#1a1a1a",color:showSafe?"#00d4ff":"#555"}},"🛡Safe"),
+      React.createElement("button",{onClick:function(){setShowGrid(!showGrid)},style:{padding:"3px 8px",borderRadius:3,fontSize:10,border:"none",cursor:"pointer",fontFamily:"inherit",background:showGrid?"rgba(0,212,255,.12)":"#1a1a1a",color:showGrid?"#00d4ff":"#555"}},"📏Grid"),
+      React.createElement("div",{style:{width:1,height:16,background:"#222"}}),
+      React.createElement("button",{onClick:function(){var a={};visSizes.forEach(function(s){a[s.id]=true});setExportChecked(a)},style:{padding:"3px 6px",borderRadius:3,fontSize:9,border:"1px solid #222",cursor:"pointer",fontFamily:"inherit",background:"#1a1a1a",color:"#888"}},"전체선택"),
+      React.createElement("button",{onClick:function(){setExportChecked({})},style:{padding:"3px 6px",borderRadius:3,fontSize:9,border:"1px solid #222",cursor:"pointer",fontFamily:"inherit",background:"#1a1a1a",color:"#888"}},"해제"),
+      React.createElement("button",{onClick:handleExport,disabled:exportCount===0,style:{padding:"3px 12px",borderRadius:3,fontSize:10,border:"none",fontFamily:"inherit",fontWeight:700,cursor:exportCount?"pointer":"default",background:exportCount?"linear-gradient(135deg,#00d4ff,#0099cc)":"#222",color:exportCount?"#000":"#444"}},"⬇ Export"+(exportCount?" ("+exportCount+")":""))
+    ),
+
+    React.createElement("div",{style:{display:"flex",flex:1,overflow:"hidden"}},
+
+      /* LEFT */
+      React.createElement("div",{style:{width:230,background:"#111",borderRight:"1px solid #1a1a1a",overflowY:"auto",flexShrink:0}},
+        React.createElement("div",{style:{padding:10,borderBottom:"1px solid #1a1a1a"}},
+          React.createElement("div",{style:sT},"🗂 레이어"),
+          layers.map(function(l){var isImg=l.type==="image";var label=isImg?l.label:(ROLES.find(function(r){return r.key===l.role})||{}).label||l.role;var sub=isImg?(l.src?l.imgW+"×"+l.imgH+" PNG":"이미지 없음"):l.content;
+            var isSelected = selectedEls.indexOf(l.id) !== -1;
+            return React.createElement("div",{key:l.id,onClick:function(e){
+                if(e.shiftKey) {
+                  var newSel = isSelected ? selectedEls.filter(function(x){return x!==l.id}) : selectedEls.concat([l.id]);
+                  setSelectedEls(newSel); setActiveEl(newSel.length>0 ? newSel[newSel.length-1] : null);
+                } else {
+                  setSelectedEls([l.id]); setActiveEl(l.id);
+                }
+              },style:{display:"flex",alignItems:"center",gap:6,padding:"5px 6px",borderRadius:3,cursor:"pointer",marginBottom:1,background:isSelected?"rgba(0,212,255,.06)":"transparent",border:isSelected?"1px solid rgba(0,212,255,.15)":"1px solid transparent"}},
+              React.createElement("input",{type:"checkbox",checked:l.visible,onChange:function(e){e.stopPropagation();saveHistory();updateLayer(l.id,"visible",!l.visible)},style:{accentColor:"#00d4ff"}}),
+              React.createElement("div",{style:{width:14,height:14,borderRadius:2,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,flexShrink:0,background:isImg?"#1a2a1a":"transparent",border:"1px solid "+(isImg?"#2a3a2a":"#333"),color:isImg?"#4ade80":(l.color||"#888")}},isImg?"🖼":"T"),
+              React.createElement("div",{style:{flex:1,minWidth:0}},React.createElement("div",{style:{fontSize:9,color:"#666",textTransform:"uppercase",letterSpacing:".04em"}},label),React.createElement("div",{style:{fontSize:10,color:"#aaa",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},sub))
+            )}),
+          React.createElement("div",{onClick:function(){fileRef.current&&fileRef.current.click()},onDrop:function(e){e.preventDefault();handleFile(e.dataTransfer.files&&e.dataTransfer.files[0])},onDragOver:function(e){e.preventDefault()},style:{marginTop:4,border:"1px dashed #333",borderRadius:4,padding:imgLayer&&imgLayer.src?4:12,cursor:"pointer",textAlign:"center",background:"#0a0a0a",overflow:"hidden"}},
+            imgLayer&&imgLayer.src?React.createElement("div",{style:{position:"relative"}},React.createElement("img",{src:imgLayer.src,alt:"",style:{width:"100%",maxHeight:80,objectFit:"contain",display:"block",background:"repeating-conic-gradient(#1a1a1a 0% 25%, #151515 0% 50%) 0 0 / 8px 8px"}}),React.createElement("button",{onClick:function(e){e.stopPropagation();saveHistory();updateLayer(imgLayer.id,"src",null);imgObjRef.current=null},style:{position:"absolute",top:2,right:2,background:"rgba(0,0,0,.7)",border:"none",color:"#f44",cursor:"pointer",borderRadius:2,padding:"0 3px",fontSize:9}},"✕")):React.createElement("div",null,React.createElement("div",{style:{fontSize:14}},"📁"),React.createElement("div",{style:{color:"#444",fontSize:9}},"PNG 업로드"))
+          ),
+          React.createElement("input",{ref:fileRef,type:"file",accept:"image/png",onChange:function(e){handleFile(e.target.files&&e.target.files[0])},style:{display:"none"}}),
+          React.createElement("button",{onClick:function(){saveHistory();var id="l"+Date.now();setLayers(function(p){return p.concat([{id:id,type:"text",role:"headline",content:"새 텍스트",font:"Noto Sans KR",size:24,weight:700,ls:0,lh:1.4,color:"#FFFFFF",align:"center",visible:true,zIndex:p.length}])});setActiveEl(id);setSelectedEls([id]);},style:{width:"100%",padding:"4px",border:"1px dashed #333",borderRadius:3,background:"transparent",color:"#444",cursor:"pointer",fontSize:10,fontFamily:"inherit",marginTop:4}},"+ 텍스트 레이어 추가")
+        ),
+        React.createElement("div",{style:{padding:10,borderBottom:"1px solid #1a1a1a"}},
+          React.createElement("div",{style:sT},"✨ 브랜드 테마 프리셋"),
+          React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:4}},
+            THEMES.map(function(t){
+              return React.createElement("button",{key:t.name,onClick:function(){applyTheme(t)},style:{padding:"6px 4px",border:"1px solid #333",borderRadius:3,background:"#0a0a0a",color:"#ccc",cursor:"pointer",fontSize:9,fontFamily:"inherit",display:"flex",alignItems:"center",gap:4}},
+                React.createElement("div",{style:{width:10,height:10,borderRadius:2,background:t.bg,border:"1px solid #555"}}), t.name
+              )
+            })
+          )
+        ),
+        React.createElement("div",{style:{padding:10,borderBottom:"1px solid #1a1a1a"}},
+          React.createElement("div",{style:sT},"🎨 캔버스 배경"),
+          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,marginBottom:4}},React.createElement("input",{type:"color",value:bgColor,onMouseDown:saveHistory,onChange:function(e){setBgColor(e.target.value)},style:{width:24,height:24,border:"none",borderRadius:3,cursor:"pointer",background:"none",padding:0}}),React.createElement("input",{type:"text",value:bgColor,onFocus:saveHistory,onChange:function(e){setBgColor(e.target.value)},style:Object.assign({},iS,{flex:1})})),
+          React.createElement("div",{style:{display:"flex",gap:3,marginBottom:6}},["#0f0f0f","#1a1a2e","#A50034","#FFFFFF","#f5f5f5","#0d1b2a","#2d1b69","#1b3a2d"].map(function(c){return React.createElement("div",{key:c,onClick:function(){saveHistory();setBgColor(c)},style:{width:18,height:18,borderRadius:3,background:c,cursor:"pointer",border:bgColor===c?"2px solid #00d4ff":"1px solid #333"}})}))
+        ),
+        React.createElement("div",{style:{padding:10,overflowY:"auto"}},
+          React.createElement("div",{style:sT},"📐 사이즈"),
+          Object.keys(PLATFORMS).map(function(key){var pl=PLATFORMS[key];return React.createElement("div",{key:key,style:{marginBottom:6}},
+            React.createElement("div",{style:{fontSize:9,color:"#777",marginBottom:2,display:"flex",alignItems:"center",gap:4}},pl.icon," ",React.createElement("span",{style:{fontWeight:600}},pl.name),React.createElement("button",{onClick:function(){var ids=pl.sizes.map(function(s){return s.id});var all=ids.every(function(id){return selIds.indexOf(id)!==-1});setSelIds(function(prev){if(all)return prev.filter(function(x){return ids.indexOf(x)===-1});var s=prev.slice();ids.forEach(function(id){if(s.indexOf(id)===-1)s.push(id)});return s})},style:{marginLeft:"auto",fontSize:8,color:"#444",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}},pl.sizes.every(function(s){return selIds.indexOf(s.id)!==-1})?"해제":"전체")),
+            pl.sizes.map(function(s){return React.createElement("label",{key:s.id,style:{display:"flex",alignItems:"center",gap:3,padding:"1px 2px",cursor:"pointer",fontSize:10}},React.createElement("input",{type:"checkbox",checked:selIds.indexOf(s.id)!==-1,onChange:function(){toggleSize(s.id)},style:{accentColor:"#00d4ff"}}),React.createElement("span",{style:{color:"#999",fontSize:9,width:56,fontFamily:"'JetBrains Mono',monospace"}},s.w+"×"+s.h),React.createElement("span",{style:{color:"#666",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},s.label))})
+          )}),
+          customSizes.length>0&&React.createElement("div",{style:{marginBottom:6}},React.createElement("div",{style:{fontSize:9,color:"#777",marginBottom:2,fontWeight:600}},"✏️ 커스텀"),customSizes.map(function(s){return React.createElement("label",{key:s.id,style:{display:"flex",alignItems:"center",gap:3,padding:"1px 2px",fontSize:10}},React.createElement("input",{type:"checkbox",checked:selIds.indexOf(s.id)!==-1,onChange:function(){toggleSize(s.id)},style:{accentColor:"#00d4ff"}}),React.createElement("span",{style:{color:"#999",fontSize:9,width:56}},s.w+"×"+s.h),React.createElement("span",{style:{color:"#666",flex:1}},s.label),React.createElement("button",{onClick:function(){setCustomSizes(function(p){return p.filter(function(x){return x.id!==s.id})})},style:{background:"none",border:"none",color:"#333",cursor:"pointer",fontSize:9}},"✕"))})),
+          React.createElement("button",{onClick:function(){setShowCF(!showCF)},style:{width:"100%",padding:"3px",border:"1px dashed #333",borderRadius:3,background:"transparent",color:"#444",cursor:"pointer",fontSize:10,fontFamily:"inherit"}},"+ 커스텀"),
+          showCF&&React.createElement("div",{style:{marginTop:4,padding:6,background:"#0a0a0a",borderRadius:4,border:"1px solid #222"}},React.createElement("input",{placeholder:"이름",value:customForm.name,onChange:function(e){setCustomForm(function(p){return Object.assign({},p,{name:e.target.value})})},style:Object.assign({},iS,{marginBottom:3})}),React.createElement("div",{style:{display:"flex",gap:3,marginBottom:3}},React.createElement("input",{placeholder:"W",type:"number",value:customForm.w,onChange:function(e){setCustomForm(function(p){return Object.assign({},p,{w:e.target.value})})},style:Object.assign({},iS,{flex:1})}),React.createElement("span",{style:{color:"#333",lineHeight:"22px"}},"×"),React.createElement("input",{placeholder:"H",type:"number",value:customForm.h,onChange:function(e){setCustomForm(function(p){return Object.assign({},p,{h:e.target.value})})},style:Object.assign({},iS,{flex:1})})),React.createElement("button",{onClick:addCustom,style:{width:"100%",padding:"3px",background:"#00d4ff",border:"none",borderRadius:3,color:"#000",cursor:"pointer",fontSize:10,fontWeight:700,fontFamily:"inherit"}},"추가"))
+        )
+      ),
+
+      /* CENTER */
+      React.createElement("div",{ref:canvasRef,onMouseDown:startPan,style:{flex:1,overflow:"hidden",background:"#080808",position:"relative",cursor:spaceHeld||isPanning?"grab":"default",backgroundImage:"radial-gradient(circle,#181818 1px,transparent 1px)",backgroundSize:"24px 24px"}},
+        React.createElement("div",{style:{transform:"translate("+pan.x+"px,"+pan.y+"px) scale("+zoom+")",transformOrigin:"0 0",display:"flex",flexWrap:"wrap",gap:20,alignItems:"flex-start",padding:40,width:"max-content"}},
+          visSizes.length===0?React.createElement("div",{style:{color:"#333",fontSize:13,padding:40}},"← 좌측에서 사이즈를 선택하세요"):visSizes.map(function(s){return renderBoard(s)})
+        ),
+        /* Context Menu (우클릭 메뉴) */
+        ctxMenu&&React.createElement("div",{style:{position:"fixed",left:ctxMenu.x,top:ctxMenu.y,background:"#222",border:"1px solid #444",borderRadius:4,padding:4,zIndex:9999,boxShadow:"0 4px 12px rgba(0,0,0,0.5)",width:150,fontFamily:"'Noto Sans KR',sans-serif"}},
+          ctxMenu.lid ? React.createElement(React.Fragment,null,
+            React.createElement("div",{className:"ctx-item",onClick:function(){
+              saveHistory(); setLayers(function(prev){var idx=prev.findIndex(function(l){return l.id===ctxMenu.lid});if(idx<0)return prev;var n=prev.slice();n[idx]=Object.assign({},n[idx],{zIndex:n[idx].zIndex+1});return n}); setCtxMenu(null);
+            }},"▲ 앞으로 가져오기"),
+            React.createElement("div",{className:"ctx-item",onClick:function(){
+              saveHistory(); setLayers(function(prev){var idx=prev.findIndex(function(l){return l.id===ctxMenu.lid});if(idx<0)return prev;var n=prev.slice();n[idx]=Object.assign({},n[idx],{zIndex:n[idx].zIndex-1});return n}); setCtxMenu(null);
+            }},"▼ 뒤로 보내기"),
+            React.createElement("div",{className:"ctx-item",onClick:function(){
+              saveHistory(); var orig=layers.find(function(l){return l.id===ctxMenu.lid}); if(!orig)return; var newId=orig.type.charAt(0)+Date.now(); var clone=Object.assign({},orig,{id:newId,zIndex:layers.length}); setLayers(function(p){return p.concat([clone])}); setActiveEl(newId); setSelectedEls([newId]); setCtxMenu(null);
+            }},"📑 레이어 복제"),
+            React.createElement("div",{className:"ctx-item",onClick:function(){
+              saveHistory(); setOverrides(function(prev){var n=Object.assign({},prev);if(n[ctxMenu.sid]){var b=Object.assign({},n[ctxMenu.sid]);delete b[ctxMenu.lid];n[ctxMenu.sid]=b}return n}); setCtxMenu(null);
+            }},"🔄 기본 위치 복원"),
+            (function(){
+              var isHidden = overrides[ctxMenu.sid]?.[ctxMenu.lid]?.hidden; if(isHidden===undefined) isHidden = boardDefaults[ctxMenu.sid]?.[ctxMenu.lid]?.hidden;
+              return React.createElement("div",{className:"ctx-item",onClick:function(){saveHistory();setOv(ctxMenu.sid,ctxMenu.lid,{hidden:!isHidden});setCtxMenu(null);}}, isHidden?"👁 보드 숨김 해제":"🚫 이 보드에서 숨기기")
+            })(),
+            React.createElement("div",{style:{height:1,background:"#444",margin:"4px 0"}}),
+            React.createElement("div",{className:"ctx-item danger",onClick:function(){
+              if(layers.find(function(l){return l.id===ctxMenu.lid}).type==="text"){ saveHistory();setLayers(function(p){return p.filter(function(l){return l.id!==ctxMenu.lid})});setActiveEl(null);setSelectedEls([]);setCtxMenu(null); }
+            }},"🗑 삭제")
+          ) : React.createElement(React.Fragment,null,
+            React.createElement("div",{className:"ctx-item",onClick:function(){
+              saveHistory(); setBoardDefaults(function(p){var n=Object.assign({},p);n[ctxMenu.sid]=overrides[ctxMenu.sid]||{};return n;}); setCtxMenu(null);
+            }},"💾 현재 배치 기본값 저장"),
+            React.createElement("div",{className:"ctx-item danger",onClick:function(){
+              saveHistory(); setBoardDefaults(function(p){var n=Object.assign({},p);delete n[ctxMenu.sid];return n;}); setOverrides(function(prev){var n=Object.assign({},prev);delete n[ctxMenu.sid];return n;}); setCtxMenu(null);
+            }},"🔄 초기 엔진배치로 리셋")
+          )
+        )
+      ),
+
+      /* RIGHT */
+      React.createElement("div",{style:{width:240,background:"#111",borderLeft:"1px solid #1a1a1a",overflowY:"auto",flexShrink:0,display:"flex",flexDirection:"column"}},
+        
+        /* 다중 선택 전용 UI 패널 */
+        selectedEls.length > 1 && activeBoard && React.createElement("div", {style:{padding:10, borderBottom:"1px solid #1a1a1a", background:"rgba(0,212,255,0.05)"}},
+          React.createElement("div",{style:sT},"다중 선택됨 ("+selectedEls.length+"개)"),
+          React.createElement("div",{style:{fontSize:9,color:"#00d4ff",marginBottom:6}},"선택 그룹 기준 정렬"),
+          React.createElement("div",{style:{display:"flex",gap:4}},
+            [{k:'L',l:'⇤'},{k:'C',l:'↔'},{k:'R',l:'⇥'},{k:'T',l:'⇡'},{k:'M',l:'↕'},{k:'B',l:'⇣'}].map(function(btn){
+              return React.createElement("button",{key:btn.k,onClick:function(){alignSelected(btn.k)},style:{flex:1,padding:"3px",border:"1px solid rgba(0,212,255,0.3)",borderRadius:2,cursor:"pointer",fontSize:12,background:"#0a0a0a",color:"#00d4ff"}},btn.l)
+            })
+          )
+        ),
+        
+        /* 아트보드 선택 시 UI (레이어 미선택 상태) */
+        activeBoard && !activeEl && selectedEls.length === 0 ? (
+          React.createElement("div",{style:{padding:10, borderBottom:"1px solid #1a1a1a"}},
+            React.createElement("div",{style:sT},"📝 아트보드 설정"),
+            React.createElement("div",{style:{fontSize:11, color:"#ccc", marginBottom:10}}, (allSizes.find(function(s){return s.id===activeBoard})||{}).w+"×"+(allSizes.find(function(s){return s.id===activeBoard})||{}).h+" "+(allSizes.find(function(s){return s.id===activeBoard})||{}).label),
+            React.createElement("button",{onClick:function(){
+              saveHistory();
+              setBoardDefaults(function(p){var n=Object.assign({},p); n[activeBoard]=overrides[activeBoard]||{}; return n;});
+            },style:{width:"100%",padding:"6px",border:"1px solid #00d4ff",borderRadius:3,background:"rgba(0,212,255,0.1)",color:"#00d4ff",cursor:"pointer",fontSize:10,fontFamily:"inherit",fontWeight:600}}, "💾 이 배치를 기본값으로 저장"),
+            React.createElement("div",{style:{fontSize:8, color:"#666", marginTop:4}},"*이후 오버라이드 리셋 시 이 배치로 돌아옵니다."),
+            
+            React.createElement("button",{onClick:function(){
+              saveHistory();
+              setBoardDefaults(function(p){var n=Object.assign({},p); delete n[activeBoard]; return n;});
+              setOverrides(function(prev){var n=Object.assign({},prev); delete n[activeBoard]; return n;});
+            },style:{width:"100%",padding:"4px",border:"1px solid #333",borderRadius:3,background:"transparent",color:"#888",cursor:"pointer",fontSize:10,fontFamily:"inherit",marginTop:10}}, "초기 엔진 배치로 공장초기화")
+          )
+        ) : null,
+
+        activeBoard&&activeEl&&activeLayerObj
+          ?activeLayerObj.type==="image"
+            ?React.createElement("div",{style:{padding:10}},
+                React.createElement("div",{style:sT},"🖼 이미지 레이어"),
+                React.createElement("div",{style:{fontSize:9,color:"#444",marginBottom:6}},"아트보드: "+(allSizes.find(function(s){return s.id===activeBoard})||{}).w+"×"+(allSizes.find(function(s){return s.id===activeBoard})||{}).h),
+                selectedEls.length === 1 && React.createElement("div",{style:{display:"flex",gap:4,marginBottom:10}},
+                  [{k:'L',l:'⇤'},{k:'C',l:'↔'},{k:'R',l:'⇥'},{k:'T',l:'⇡'},{k:'M',l:'↕'},{k:'B',l:'⇣'}].map(function(btn){
+                    return React.createElement("button",{key:btn.k,onClick:function(){alignSelected(btn.k)},style:{flex:1,padding:"3px",border:"1px solid #222",borderRadius:2,cursor:"pointer",fontSize:12,background:"#1a1a1a",color:"#00d4ff"}},btn.l)
+                  })
+                ),
+                (function(){
+                  var er=getElRect(activeBoard,activeLayerObj);
+                  return React.createElement(React.Fragment,null,
+                    React.createElement(NI,{label:"X(%)",value:er.x,onFocus:saveHistory,onChange:function(v){setOv(activeBoard,activeEl,{x:v})},min:-50,max:100,unit:"%"}),
+                    React.createElement(NI,{label:"Y(%)",value:er.y,onFocus:saveHistory,onChange:function(v){setOv(activeBoard,activeEl,{y:v})},min:-50,max:100,unit:"%"}),
+                    React.createElement(NI,{label:"W(%)",value:er.w,onFocus:saveHistory,onChange:function(v){
+                      var sz = allSizes.find(function(s){return s.id===activeBoard});
+                      setOv(activeBoard,activeEl,{w:Math.max(5,v), h:Math.max(5,v)*(sz.w/sz.h)})
+                    },min:5,max:200,unit:"%"}),
+                    React.createElement(NI,{label:"H(%)",value:er.h,onFocus:saveHistory,onChange:function(v){
+                      var sz = allSizes.find(function(s){return s.id===activeBoard});
+                      setOv(activeBoard,activeEl,{w:Math.max(5,v)*(sz.h/sz.w), h:Math.max(5,v)})
+                    },min:5,max:200,unit:"%"})
+                  )
+                })(),
+                React.createElement("button",{onClick:function(){saveHistory();setOverrides(function(prev){var n=Object.assign({},prev);if(n[activeBoard]){var b=Object.assign({},n[activeBoard]);delete b[activeEl];n[activeBoard]=b}return n})},style:{width:"100%",padding:"4px",border:"1px solid #222",borderRadius:3,background:"#0a0a0a",color:"#555",cursor:"pointer",fontSize:10,fontFamily:"inherit",marginTop:4}},"기본값 복원"),
+                (function(){
+                  var isHidden = overrides[activeBoard]?.[activeEl]?.hidden;
+                  if(isHidden === undefined) isHidden = boardDefaults[activeBoard]?.[activeEl]?.hidden;
+                  return React.createElement("button",{onClick:function(){
+                    saveHistory();
+                    setOv(activeBoard, activeEl, {hidden: !isHidden});
+                  },style:{width:"100%",padding:"4px",border:isHidden?"1px solid #00d4ff":"1px solid #552222",borderRadius:3,background:isHidden?"rgba(0,212,255,0.1)":"rgba(255,0,0,0.1)",color:isHidden?"#00d4ff":"#f44",cursor:"pointer",fontSize:10,fontFamily:"inherit",marginTop:4}}, isHidden ? "👁 이 보드에서 숨김 해제" : "🚫 이 보드에서 숨기기")
+                })(),
+                React.createElement("div",{style:{marginTop:10, paddingTop:10, borderTop:"1px solid #1a1a1a"}},
+                  React.createElement("div",{style:sT},"✂️ 이미지 내부 마스킹/크롭"),
+                  React.createElement(NI,{label:"Scale",value:getOv(activeBoard,activeEl).imgS??1,onFocus:saveHistory,onChange:function(v){setOv(activeBoard,activeEl,{imgS:v})},min:0.1,max:5,step:0.05}),
+                  React.createElement(NI,{label:"Pan X",value:getOv(activeBoard,activeEl).imgX??0,onFocus:saveHistory,onChange:function(v){setOv(activeBoard,activeEl,{imgX:v})},min:-200,max:200,step:1,unit:"%"}),
+                  React.createElement(NI,{label:"Pan Y",value:getOv(activeBoard,activeEl).imgY??0,onFocus:saveHistory,onChange:function(v){setOv(activeBoard,activeEl,{imgY:v})},min:-200,max:200,step:1,unit:"%"})
+                )
+              )
+            :React.createElement(React.Fragment,null,
+              React.createElement("div",{style:{padding:10,borderBottom:"1px solid #1a1a1a"}},
+                React.createElement("div",{style:sT},"✏️ "+((ROLES.find(function(r){return r.key===activeLayerObj.role})||{}).label||"Text")),
+                React.createElement("select",{value:activeLayerObj.role,onFocus:saveHistory,onChange:function(e){updateLayer(activeEl,"role",e.target.value)},style:Object.assign({},iS,{marginBottom:4})},ROLES.map(function(r){return React.createElement("option",{key:r.key,value:r.key},r.label)})),
+                React.createElement("textarea",{value:activeLayerObj.content,onFocus:saveHistory,onChange:function(e){updateLayer(activeEl,"content",e.target.value)},rows:2,style:Object.assign({},iS,{fontFamily:"'Noto Sans KR',sans-serif",fontSize:11,resize:"vertical"})}),
+                
+                // 에이전트 요약 기능 UI 버튼
+                React.createElement("button",{onClick:function(){ runAgenticSummary(activeEl, activeLayerObj.content) }, disabled: summarizingId === activeEl, style:{width:"100%",padding:"6px",border:"1px solid #ff00ff",borderRadius:3,background:summarizingId === activeEl ? "#333" : "rgba(255,0,255,0.1)",color:summarizingId === activeEl ? "#aaa" : "#ff00ff",cursor:summarizingId === activeEl ? "default" : "pointer",fontSize:10,fontFamily:"inherit",fontWeight:600, marginTop:6}}, 
+                  summarizingId === activeEl ? "🤖 에이전트가 최적 카피 분석 중..." : "✨ AI 에이전트 카피 자동 요약"
+                )
+              ),
+              React.createElement("div",{style:{padding:10,borderBottom:"1px solid #1a1a1a"}},
+                React.createElement("div",{style:sT},"📐 위치/크기 정렬"),
+                selectedEls.length === 1 && React.createElement("div",{style:{display:"flex",gap:4,marginBottom:10}},
+                  [{k:'L',l:'⇤'},{k:'C',l:'↔'},{k:'R',l:'⇥'},{k:'T',l:'⇡'},{k:'M',l:'↕'},{k:'B',l:'⇣'}].map(function(btn){
+                    return React.createElement("button",{key:btn.k,onClick:function(){alignSelected(btn.k)},style:{flex:1,padding:"3px",border:"1px solid #222",borderRadius:2,cursor:"pointer",fontSize:12,background:"#1a1a1a",color:"#00d4ff"}},btn.l)
+                  })
+                ),
+                (function(){var er=getElRect(activeBoard,activeLayerObj);return React.createElement(React.Fragment,null,
+                  React.createElement(NI,{label:"X(%)",value:er.x,onFocus:saveHistory,onChange:function(v){setOv(activeBoard,activeEl,{x:v})},min:-50,max:150,unit:"%"}),
+                  React.createElement(NI,{label:"Y(%)",value:er.y,onFocus:saveHistory,onChange:function(v){setOv(activeBoard,activeEl,{y:v})},min:-50,max:150,unit:"%"}),
+                  React.createElement(NI,{label:"W(%)",value:er.w,onFocus:saveHistory,onChange:function(v){setOv(activeBoard,activeEl,{w:clamp(v,5,200)})},min:5,max:200,unit:"%"}),
+                  React.createElement(NI,{label:"H(%)",value:er.h,onFocus:saveHistory,onChange:function(v){setOv(activeBoard,activeEl,{h:clamp(v,3,200)})},min:3,max:200,unit:"%"}),
+                  React.createElement(NI,{label:"폰트",value:er.fs,onFocus:saveHistory,onChange:function(v){setOv(activeBoard,activeEl,{fs:clamp(v,6,300)})},min:6,max:300,unit:"px"})
+                )})(),
+                React.createElement("button",{onClick:function(){saveHistory();setOverrides(function(prev){var n=Object.assign({},prev);if(n[activeBoard]){var b=Object.assign({},n[activeBoard]);delete b[activeEl];n[activeBoard]=b}return n})},style:{width:"100%",padding:"4px",border:"1px solid #222",borderRadius:3,background:"#0a0a0a",color:"#555",cursor:"pointer",fontSize:10,fontFamily:"inherit",marginTop:4}},"오버라이드 리셋"),
+                (function(){
+                  var isHidden = overrides[activeBoard]?.[activeEl]?.hidden;
+                  if(isHidden === undefined) isHidden = boardDefaults[activeBoard]?.[activeEl]?.hidden;
+                  return React.createElement("button",{onClick:function(){
+                    saveHistory();
+                    setOv(activeBoard, activeEl, {hidden: !isHidden});
+                  },style:{width:"100%",padding:"4px",border:isHidden?"1px solid #00d4ff":"1px solid #552222",borderRadius:3,background:isHidden?"rgba(0,212,255,0.1)":"rgba(255,0,0,0.1)",color:isHidden?"#00d4ff":"#f44",cursor:"pointer",fontSize:10,fontFamily:"inherit",marginTop:4}}, isHidden ? "👁 이 보드에서 숨김 해제" : "🚫 이 보드에서 숨기기")
+                })()
+              ),
+              React.createElement("div",{style:{padding:10,borderBottom:"1px solid #1a1a1a"}},
+                React.createElement("div",{style:sT},"🔤 타이포"),
+                React.createElement("div",{style:{display:"flex",gap:4,marginBottom:4}},
+                  React.createElement("select",{value:activeLayerObj.font,onFocus:saveHistory,onChange:function(e){updateLayer(activeEl,"font",e.target.value)},style:Object.assign({},iS,{flex:1})},allFontsList.map(function(f){return React.createElement("option",{key:f.family,value:f.family},f.family)}))
+                ),
+                React.createElement("div",{style:{display:"flex",gap:4,marginBottom:8}},
+                  React.createElement("input",{type:"text",placeholder:"구글 웹폰트명 (예: Jua)",value:customFontInput,onChange:function(e){setCustomFontInput(e.target.value)},style:Object.assign({},iS,{flex:1})}),
+                  React.createElement("button",{onClick:handleAddCustomFont,style:{padding:"3px 8px",background:"#00d4ff",color:"#000",border:"none",borderRadius:3,cursor:"pointer",fontSize:10,fontWeight:"bold"}},"추가")
+                ),
+                React.createElement("div",{style:{display:"flex",gap:6,marginBottom:4}},
+                  React.createElement("div",{style:{flex:1}},React.createElement("div",{style:{fontSize:9,color:"#444",marginBottom:2}},"Size"),React.createElement("input",{type:"number",min:8,max:200,value:activeLayerObj.size,onFocus:saveHistory,onChange:function(e){updateLayer(activeEl,"size",+e.target.value)},style:iS})),
+                  React.createElement("div",{style:{flex:1}},React.createElement("div",{style:{fontSize:9,color:"#444",marginBottom:2}},"Wt"),React.createElement("select",{value:activeLayerObj.weight,onFocus:saveHistory,onChange:function(e){updateLayer(activeEl,"weight",+e.target.value)},style:iS},(allFontsList.find(function(f){return f.family===activeLayerObj.font})||{weights:[400,700]}).weights.map(function(w){return React.createElement("option",{key:w,value:w},w)})))
+                ),
+                React.createElement("div",{style:{marginBottom:4}},React.createElement("div",{style:{display:"flex",justifyContent:"space-between"}},React.createElement("span",{style:{fontSize:9,color:"#444"}},"자간"),React.createElement("span",{style:{fontSize:9,color:"#666"}},activeLayerObj.ls+"em")),React.createElement("input",{type:"range",min:-.1,max:.3,step:.005,value:activeLayerObj.ls,onMouseDown:saveHistory,onChange:function(e){updateLayer(activeEl,"ls",+e.target.value)},style:{width:"100%",accentColor:"#00d4ff"}})),
+                React.createElement("div",{style:{marginBottom:4}},React.createElement("div",{style:{display:"flex",justifyContent:"space-between"}},React.createElement("span",{style:{fontSize:9,color:"#444"}},"행간"),React.createElement("span",{style:{fontSize:9,color:"#666"}},activeLayerObj.lh)),React.createElement("input",{type:"range",min:.8,max:2.5,step:.05,value:activeLayerObj.lh,onMouseDown:saveHistory,onChange:function(e){updateLayer(activeEl,"lh",+e.target.value)},style:{width:"100%",accentColor:"#00d4ff"}})),
+                React.createElement("div",{style:{display:"flex",gap:2}},[{v:"left",l:"좌측"},{v:"center",l:"중앙"},{v:"right",l:"우측"},{v:"justify",l:"양쪽"}].map(function(a){return React.createElement("button",{key:a.v,onClick:function(){saveHistory();updateLayer(activeEl,"align",a.v)},style:{flex:1,padding:"4px",border:"none",borderRadius:2,cursor:"pointer",fontSize:10,fontFamily:"inherit",background:activeLayerObj.align===a.v?"rgba(0,212,255,.12)":"#0a0a0a",color:activeLayerObj.align===a.v?"#00d4ff":"#444"}},a.l)}))
+              ),
+              React.createElement("div",{style:{padding:10,borderBottom:"1px solid #1a1a1a"}},
+                React.createElement("div",{style:sT},"🎨 컬러"),
+                React.createElement("div",{style:{display:"flex",gap:6,alignItems:"center",marginBottom:6}},React.createElement("input",{type:"color",value:activeLayerObj.color,onMouseDown:saveHistory,onChange:function(e){updateLayer(activeEl,"color",e.target.value)},style:{width:22,height:22,border:"none",borderRadius:3,cursor:"pointer",padding:0,background:"none"}}),React.createElement("input",{type:"text",value:activeLayerObj.color,onFocus:saveHistory,onChange:function(e){updateLayer(activeEl,"color",e.target.value)},style:Object.assign({},iS,{flex:1})})),
+                activeLayerObj.role==="cta"&&React.createElement("div",{style:{display:"flex",gap:6,alignItems:"center",marginBottom:6}},React.createElement("input",{type:"color",value:activeLayerObj.bg||"#A50034",onMouseDown:saveHistory,onChange:function(e){updateLayer(activeEl,"bg",e.target.value)},style:{width:22,height:22,border:"none",borderRadius:3,cursor:"pointer",padding:0,background:"none"}}),React.createElement("input",{type:"text",value:activeLayerObj.bg||"#A50034",onFocus:saveHistory,onChange:function(e){updateLayer(activeEl,"bg",e.target.value)},style:Object.assign({},iS,{flex:1})}),React.createElement("span",{style:{fontSize:8,color:"#444"}},"CTA")),
+                React.createElement("div",{style:{padding:5,background:"#0a0a0a",borderRadius:3,border:"1px solid #1a1a1a",display:"flex",justifyContent:"space-between",alignItems:"center"}},React.createElement("span",{style:{fontSize:9,color:"#444"}},"대비율"),React.createElement("span",{style:{fontSize:10,fontWeight:700,color:crVal>=4.5?"#4ade80":crVal>=3?"#fbbf24":"#ef4444"}},crVal.toFixed(1)+":1 "+(crVal>=4.5?"✅":crVal>=3?"⚠️":"❌")))
+              ),
+              React.createElement("div",{style:{padding:10}},
+                React.createElement("button",{onClick:function(){if(activeLayerObj.type==="text"){
+                  saveHistory();
+                  setLayers(function(p){return p.filter(function(l){return l.id!==activeEl})});
+                  setActiveEl(null); setSelectedEls([]);
+                }},style:{width:"100%",padding:"4px",border:"1px solid #2a1515",borderRadius:3,background:"rgba(255,0,0,.04)",color:"#c44",cursor:"pointer",fontSize:10,fontFamily:"inherit"}},"레이어 삭제")
+              )
+            )
+          : (!activeBoard ? React.createElement("div",{style:{padding:16,color:"#333",fontSize:11,textAlign:"center",marginTop:20}},"아트보드나 요소를 클릭하세요") : null),
+        React.createElement("div",{style:{padding:8,borderTop:"1px solid #1a1a1a",marginTop:"auto",fontSize:9,color:"#333",lineHeight:1.8}},
+          React.createElement("div",null,"🖱 스크롤: 줌 | Space+드래그: 패닝"),
+          React.createElement("div",null,"단축키: Ctrl+Z (실행취소)"),
+          React.createElement("div",null,"사이즈 ",React.createElement("span",{style:{color:"#888"}},visSizes.length)," | 레이어 ",React.createElement("span",{style:{color:"#888"}},layers.length))
+        )
+      )
+    )
+  );
+}
