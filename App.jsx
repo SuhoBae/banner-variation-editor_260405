@@ -330,6 +330,9 @@ export default function App(){
     var ov = overrides[sid]?.[lid] || {};
     return Object.assign({}, def, ov);
   }
+  function hasManualBoxOverride(sid,lid){
+    return !!getOv(sid,lid).manualBox;
+  }
   function getLayerForBoard(sid, layer){
     if(!layer) return null;
     return Object.assign({}, layer, getOv(sid, layer.id));
@@ -449,7 +452,7 @@ export default function App(){
     var nextX = er.x;
     if(layer.align==="center") nextX = er.x + ((er.w - nextW) / 2);
     if(layer.align==="right") nextX = er.x + (er.w - nextW);
-    setOv(sid,lid,{x:nextX,w:nextW,h:nextH});
+    setOv(sid,lid,{x:nextX,w:nextW,h:nextH,manualBox:false});
   }
   
   function getElRect(sid,layer){
@@ -488,8 +491,10 @@ export default function App(){
     var rw=(tReg.w/100)*sw/sz.w*100;
     var rh=(tReg.h/100)*sh/sz.h*100;
     if(layer.type==="text"){
-      var textContent = String((editingTextId===layer.id && activeBoard===sid && activeEl===layer.id ? editingDraftRef.current : layer.content) || "");
-      var constrainedWidthPx = ov.w!=null ? (ov.w / 100) * sz.w : null;
+      var isEditingActive = editingTextId===layer.id && activeBoard===sid && activeEl===layer.id;
+      var textContent = String((isEditingActive ? editingDraftRef.current : layer.content) || "");
+      var manualBox = hasManualBoxOverride(sid,layer.id);
+      var constrainedWidthPx = !isEditingActive && manualBox && ov.w!=null ? (ov.w / 100) * sz.w : null;
       var measured = measureTextBlock(textContent, fs, layer.font, layer.weight, layer.lh, layer.role==="cta" ? null : constrainedWidthPx);
       var intrinsicW = (measured.width / sz.w) * 100;
       var intrinsicH = (measured.height / sz.h) * 100;
@@ -504,7 +509,7 @@ export default function App(){
       if(layer.align==="center") defaultX = rx + ((rw - defaultW) / 2);
       if(layer.align==="right") defaultX = rx + (rw - defaultW);
       if(layer.role==="cta") defaultY = ry + ((rh - defaultH) / 2);
-      return {x:ov.x!=null?ov.x:defaultX,y:ov.y!=null?ov.y:defaultY,w:ov.w!=null?ov.w:defaultW,h:ov.h!=null?ov.h:defaultH,fs:fs};
+      return {x:ov.x!=null?ov.x:defaultX,y:ov.y!=null?ov.y:defaultY,w:manualBox&&ov.w!=null?ov.w:defaultW,h:manualBox&&ov.h!=null?ov.h:defaultH,fs:fs};
     }
     return{x:ov.x!=null?ov.x:rx,y:ov.y!=null?ov.y:ry,w:ov.w!=null?ov.w:rw,h:ov.h!=null?ov.h:rh,fs:fs};
   }
@@ -620,6 +625,7 @@ export default function App(){
           var scaleRatio = Math.max(next.w / Math.max(sp.w, 0.01), next.h / Math.max(sp.h, 0.01));
           next.fs = Math.round(clamp(sp.fs * scaleRatio, 6, 300));
         }
+        next.manualBox = true;
         setOv(d.sid, d.lid, next);
       }
       setTick(function(c){return c+1});
