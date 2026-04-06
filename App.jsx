@@ -338,7 +338,16 @@ export default function App(){
     setActiveBoard(sid);
     setSelectedEls(nextIds);
     setActiveEl(lid);
-    setEditingTextId(base && base.type==="text" && base.role!=="cta" && nextIds.length===1 ? lid : null);
+    if(base && base.type==="text" && base.role!=="cta" && nextIds.length===1){
+      var boardLayer = getLayerForBoard(sid, base);
+      var nextText = String((boardLayer && boardLayer.content) || "");
+      editingDraftRef.current = nextText;
+      setEditingDraftValue(nextText);
+      setEditingTextId(lid);
+    } else {
+      setEditingDraftValue("");
+      setEditingTextId(null);
+    }
   }
   function setBoardLayerProp(sid,lid,key,val){
     setOv(sid,lid,Object.assign({}, {[key]:val}));
@@ -916,7 +925,7 @@ export default function App(){
               isSel && !isEditingText && React.createElement("div",{onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")},style:{position:"absolute",inset:-6,cursor:spaceHeld?"grab":"move",background:"transparent"}}),
               isSel&&React.createElement("div",{onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")},style:{position:"absolute",top:-8,left:0,fontSize:labelFontSize,color:MD.primary,lineHeight:1,pointerEvents:"auto",whiteSpace:"nowrap",fontWeight:700,letterSpacing:".02em",cursor:spaceHeld?"grab":"move"}},getLayerDisplayName(layer)),
               isEditingText && !isCta
-                ?React.createElement("textarea",{ref:editingRef,id:"layer-content-"+sz.id+"-"+layer.id,value:editingDraftValue,spellCheck:false,onClick:function(e){e.stopPropagation();},onMouseDown:function(e){e.stopPropagation();},onCompositionStart:function(){isComposingRef.current=true;},onCompositionEnd:function(){isComposingRef.current=false;requestAnimationFrame(function(){setTick(function(c){return c+1});});},onChange:function(e){editingDraftRef.current=e.target.value;setEditingDraftValue(e.target.value);},onBlur:function(){if(isComposingRef.current) return; commitEditingText(sz.id,layer.id,false);},onKeyDown:function(e){if(e.key==="Escape"){e.preventDefault();commitEditingText(sz.id,layer.id,true);e.currentTarget.blur();}},style:{position:"absolute",top:"-0.12em",left:0,minWidth:"100%",whiteSpace:"pre-wrap",wordBreak:"keep-all",display:"block",width:"100%",height:"calc(100% + 0.24em)",padding:"0.12em 0",margin:0,border:"none",background:"transparent",outline:"none",overflow:"visible",resize:"none",cursor:"text",color:"inherit",font:"inherit",letterSpacing:"inherit",lineHeight:"inherit",textAlign:layer.align,boxSizing:"border-box"}}) 
+                ?React.createElement("textarea",{ref:editingRef,id:"layer-content-"+sz.id+"-"+layer.id,value:editingDraftValue,spellCheck:false,wrap:"off",onClick:function(e){e.stopPropagation();},onMouseDown:function(e){e.stopPropagation();},onCompositionStart:function(){isComposingRef.current=true;},onCompositionEnd:function(){isComposingRef.current=false;requestAnimationFrame(function(){setTick(function(c){return c+1});});},onChange:function(e){editingDraftRef.current=e.target.value;setEditingDraftValue(e.target.value);requestAnimationFrame(function(){setTick(function(c){return c+1});});},onBlur:function(){if(isComposingRef.current) return; commitEditingText(sz.id,layer.id,false);},onKeyDown:function(e){if(e.key==="Escape"){e.preventDefault();commitEditingText(sz.id,layer.id,true);e.currentTarget.blur();}},style:{position:"absolute",top:"-0.12em",left:0,minWidth:"100%",whiteSpace:"pre",wordBreak:"keep-all",display:"block",width:"100%",height:"calc(100% + 0.24em)",padding:"0.12em 0",margin:0,border:"none",background:"transparent",outline:"none",overflow:"hidden",resize:"none",cursor:"text",color:"inherit",font:"inherit",letterSpacing:"inherit",lineHeight:"inherit",textAlign:layer.align,boxSizing:"border-box",scrollbarWidth:"none",msOverflowStyle:"none"}}) 
                 :isCta&&layer.bg
                   ?React.createElement("span",{id:"layer-content-"+sz.id+"-"+layer.id,style:{background:layer.bg,padding:(dfs*0.2)+"px "+(dfs*0.3)+"px",borderRadius:999,whiteSpace:"nowrap",display:"inline-flex",alignItems:"center",justifyContent:"center",lineHeight:1,boxShadow:"0 1px 3px rgba(0,0,0,.12)"}} ,layer.content)
                   :React.createElement("span",{id:"layer-content-"+sz.id+"-"+layer.id,style:{whiteSpace:"pre-wrap",wordBreak:"keep-all",display:"block",width:"100%",overflow:"visible"}},layer.content),
@@ -996,9 +1005,27 @@ export default function App(){
             return React.createElement("div",{key:l.id,onClick:function(e){
                 if(e.shiftKey) {
                   var newSel = isSelected ? selectedEls.filter(function(x){return x!==l.id}) : selectedEls.concat([l.id]);
-                  setSelectedEls(newSel); setActiveEl(newSel.length>0 ? newSel[newSel.length-1] : null); setEditingTextId(newSel.length===1 && boardLayer.type==="text" && boardLayer.role!=="cta" ? l.id : null);
+                  setSelectedEls(newSel); setActiveEl(newSel.length>0 ? newSel[newSel.length-1] : null);
+                  if(newSel.length===1 && boardLayer.type==="text" && boardLayer.role!=="cta"){
+                    var nextText = String(boardLayer.content || "");
+                    editingDraftRef.current = nextText;
+                    setEditingDraftValue(nextText);
+                    setEditingTextId(l.id);
+                  } else {
+                    setEditingDraftValue("");
+                    setEditingTextId(null);
+                  }
                 } else {
-                  setSelectedEls([l.id]); setActiveEl(l.id); setEditingTextId(boardLayer.type==="text" && boardLayer.role!=="cta" ? l.id : null);
+                  setSelectedEls([l.id]); setActiveEl(l.id);
+                  if(boardLayer.type==="text" && boardLayer.role!=="cta"){
+                    var singleText = String(boardLayer.content || "");
+                    editingDraftRef.current = singleText;
+                    setEditingDraftValue(singleText);
+                    setEditingTextId(l.id);
+                  } else {
+                    setEditingDraftValue("");
+                    setEditingTextId(null);
+                  }
                 }
               },style:{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",borderRadius:14,cursor:"pointer",marginBottom:4,background:isSelected?MD.primarySoft:MD.surface2,border:isSelected?"1px solid rgba(26,115,232,.18)":"1px solid transparent",opacity:layerHidden?0.55:1}},
               React.createElement("input",{type:"checkbox",checked:!layerHidden,onChange:function(e){e.stopPropagation();saveHistory(); if(activeBoard) setOv(activeBoard,l.id,{hidden:layerHidden?false:true}); else updateLayer(l.id,"visible",!l.visible)},style:{accentColor:MD.primary}}),
