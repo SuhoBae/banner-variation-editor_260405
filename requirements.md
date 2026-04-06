@@ -28,3 +28,9 @@
   - `App.jsx`: state orchestration, board composition, high-level workflow only
 - New feature work should first decide whether it belongs to config, utils, components, or orchestration.
 - Repeated logic across two or more UI surfaces must be extracted before adding more behavior.
+
+## Artboard Sizing Requirement (2026-04-06)
+- The active artboard must support direct numeric width/height editing from the inspector.
+- Artboard size edits must apply only to the selected board, not globally to all preset boards.
+- Resolved board size must be the single source used by board rendering, layer measurement, drag/resize math, and export.
+- Resetting a board must also clear its size override so the preset or custom base size is restored.

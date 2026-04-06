@@ -136,6 +136,7 @@ export default function App(){
   
   var _ov=useState({});var overrides=_ov[0],setOverrides=_ov[1];
   var _bd=useState({});var boardDefaults=_bd[0],setBoardDefaults=_bd[1];
+  var _bso=useState({});var boardSizeOverrides=_bso[0],setBoardSizeOverrides=_bso[1];
   
   var _cfnt=useState([]); var customFonts=_cfnt[0],setCustomFonts=_cfnt[1];
   var _cfntIn=useState(""); var customFontInput=_cfntIn[0],setCustomFontInput=_cfntIn[1];
@@ -147,12 +148,12 @@ export default function App(){
   var _sumId=useState(null); var summarizingId=_sumId[0], setSummarizingId=_sumId[1]; // 에이전트 요약 상태
   
   var histRef = useRef({ past: [], future: [] });
-  var stateRef = useRef({ layers: layers, overrides: overrides, bgColor: bgColor, boardDefaults: boardDefaults, customFonts: customFonts });
+  var stateRef = useRef({ layers: layers, overrides: overrides, bgColor: bgColor, boardDefaults: boardDefaults, customFonts: customFonts, boardSizeOverrides: boardSizeOverrides });
   var _hc=useState(0); var setHistCount=_hc[1];
   
   useEffect(function() {
-    stateRef.current = { layers: layers, overrides: overrides, bgColor: bgColor, boardDefaults: boardDefaults, customFonts: customFonts };
-  }, [layers, overrides, bgColor, boardDefaults, customFonts]);
+    stateRef.current = { layers: layers, overrides: overrides, bgColor: bgColor, boardDefaults: boardDefaults, customFonts: customFonts, boardSizeOverrides: boardSizeOverrides };
+  }, [layers, overrides, bgColor, boardDefaults, customFonts, boardSizeOverrides]);
 
   var saveHistory = useCallback(function() {
     var st = JSON.parse(JSON.stringify(stateRef.current));
@@ -175,6 +176,7 @@ export default function App(){
     setBgColor(prev.bgColor);
     setBoardDefaults(prev.boardDefaults || {});
     setCustomFonts(prev.customFonts || []);
+    setBoardSizeOverrides(prev.boardSizeOverrides || {});
     setHistCount(function(c){return c+1});
     setActiveEl(null); setSelectedEls([]);
     setCtxMenu(null);
@@ -190,6 +192,7 @@ export default function App(){
     setBgColor(next.bgColor);
     setBoardDefaults(next.boardDefaults || {});
     setCustomFonts(next.customFonts || []);
+    setBoardSizeOverrides(next.boardSizeOverrides || {});
     setHistCount(function(c){return c+1});
     setActiveEl(null); setSelectedEls([]);
     setCtxMenu(null);
@@ -244,7 +247,20 @@ export default function App(){
     };
   }, [editingTextId, activeBoard, activeEl]);
   
-  var allSizes=ALL_SIZES.concat(customSizes);
+  var allSizesBase=ALL_SIZES.concat(customSizes);
+  function resolveBoardSize(size){
+    if(!size) return null;
+    var override = boardSizeOverrides[size.id];
+    if(!override) return size;
+    return Object.assign({}, size, {
+      w: override.w != null ? override.w : size.w,
+      h: override.h != null ? override.h : size.h
+    });
+  }
+  function getSizeById(sid){
+    return resolveBoardSize(allSizesBase.find(function(s){return s.id===sid}));
+  }
+  var allSizes=allSizesBase.map(resolveBoardSize);
   var visSizes=allSizes.filter(function(s){return selIds.indexOf(s.id)!==-1});
   var imgLayer=layers.find(function(l){return l.type==="image"});
   var activeBaseLayerObj=layers.find(function(l){return l.id===activeEl});
@@ -338,6 +354,21 @@ export default function App(){
   }
   function setBoardLayerProp(sid,lid,key,val){
     setOv(sid,lid,Object.assign({}, {[key]:val}));
+  }
+  function setBoardSizeProp(sid,key,val){
+    var base = allSizesBase.find(function(size){return size.id===sid});
+    if(!base) return;
+    var nextValue = Math.round(clamp(+val || 0, 50, 4000));
+    setBoardSizeOverrides(function(prev){
+      var current = prev[sid] || {};
+      var nextBoard = Object.assign({}, current, {[key]:nextValue});
+      var resolvedW = nextBoard.w != null ? nextBoard.w : base.w;
+      var resolvedH = nextBoard.h != null ? nextBoard.h : base.h;
+      var next = Object.assign({}, prev);
+      if(resolvedW === base.w && resolvedH === base.h) delete next[sid];
+      else next[sid] = nextBoard;
+      return next;
+    });
   }
   function clearLayerSelection(){
     setActiveEl(null);
@@ -452,6 +483,11 @@ export default function App(){
       delete n[sid];
       return n;
     });
+    setBoardSizeOverrides(function(prev){
+      var n=Object.assign({},prev);
+      delete n[sid];
+      return n;
+    });
     setOverrides(function(prev){
       var n=Object.assign({},prev);
       delete n[sid];
@@ -459,6 +495,7 @@ export default function App(){
     });
   }
   function boardHasChanges(sid){
+    if(boardSizeOverrides[sid]) return true;
     var board = overrides[sid];
     if(!board) return false;
     return Object.keys(board).some(function(lid){
@@ -499,7 +536,7 @@ export default function App(){
     if(!baseLayer || baseLayer.type!=="text") return;
     saveHistory();
     var layer = getLayerForBoard(sid, baseLayer);
-    var sz = allSizes.find(function(s){return s.id===sid});
+    var sz = getSizeById(sid);
     if(!sz) return;
     var er = getElRect(sid, layer);
     var nextW = er.w, nextH = er.h;
@@ -523,7 +560,7 @@ export default function App(){
   }
   
   function getElRect(sid,layer){
-    var sz=allSizes.find(function(s){return s.id===sid});if(!sz)return{x:0,y:0,w:100,h:100,fs:12};
+    var sz=getSizeById(sid);if(!sz)return{x:0,y:0,w:100,h:100,fs:12};
     var ov=getOv(sid,layer.id);
     var sa=getSafe(sz);
     var sw=sz.w-sa.l-sa.r, sh=sz.h-sa.t-sa.b;
@@ -588,7 +625,7 @@ export default function App(){
     if(!activeBoard || selectedEls.length===0) return;
     saveHistory();
     
-    var sz=allSizes.find(function(s){return s.id===activeBoard}); if(!sz) return;
+    var sz=getSizeById(activeBoard); if(!sz) return;
     var sa=getSafe(sz);
     var sPx = (sa.l / sz.w) * 100;
     var sPy = (sa.t / sz.h) * 100;
@@ -670,7 +707,7 @@ export default function App(){
         var dragBaseLayer = layers.find(function(l){return l.id===d.lid});
         var isTextLike = dragBaseLayer && dragBaseLayer.type==="text";
         var next = {x:sp.x,y:sp.y,w:sp.w,h:sp.h};
-        var sz = allSizes.find(function(s){return s.id===d.sid});
+        var sz = getSizeById(d.sid);
         var resizeBoostX = pxZ * 1.8;
         var resizeBoostY = pyZ * 1.8;
         if(d.act==="resize-e" || d.act==="resize-se") next.w = clamp(sp.w + resizeBoostX, 5, 200);
@@ -1146,7 +1183,7 @@ export default function App(){
               saveHistory(); setBoardDefaults(function(p){var n=Object.assign({},p);n[ctxMenu.sid]=overrides[ctxMenu.sid]||{};return n;}); setCtxMenu(null);
             }},"💾 현재 배치 기본값 저장"),
             React.createElement("div",{className:"ctx-item danger",onClick:function(){
-              saveHistory(); setBoardDefaults(function(p){var n=Object.assign({},p);delete n[ctxMenu.sid];return n;}); setOverrides(function(prev){var n=Object.assign({},prev);delete n[ctxMenu.sid];return n;}); setCtxMenu(null);
+              saveHistory(); resetBoardState(ctxMenu.sid); setCtxMenu(null);
             }},"🔄 초기 엔진배치로 리셋")
           )
         )
@@ -1170,7 +1207,17 @@ export default function App(){
         activeBoard && !activeEl && selectedEls.length === 0 ? (
           React.createElement("div",{style:{padding:10, borderBottom:"1px solid #1a1a1a"}},
             React.createElement("div",{style:sT},"📝 아트보드 설정"),
-            React.createElement("div",{style:{fontSize:11, color:"#ccc", marginBottom:10}}, (allSizes.find(function(s){return s.id===activeBoard})||{}).w+"×"+(allSizes.find(function(s){return s.id===activeBoard})||{}).h+" "+(allSizes.find(function(s){return s.id===activeBoard})||{}).label),
+            (function(){
+              var activeSize = getSizeById(activeBoard) || {};
+              return React.createElement(React.Fragment,null,
+                React.createElement("div",{style:{fontSize:11, color:"#ccc", marginBottom:10}}, activeSize.w+"×"+activeSize.h+" "+(activeSize.label||"")),
+                React.createElement("div",{style:{display:"flex",gap:6,marginBottom:10}},
+                  React.createElement("div",{style:{flex:1}},React.createElement(NumberInput,{label:"W",value:activeSize.w||0,onFocus:saveHistory,onChange:function(v){setBoardSizeProp(activeBoard,"w",v)},min:50,max:4000,step:10,unit:"px"})),
+                  React.createElement("div",{style:{flex:1}},React.createElement(NumberInput,{label:"H",value:activeSize.h||0,onFocus:saveHistory,onChange:function(v){setBoardSizeProp(activeBoard,"h",v)},min:50,max:4000,step:10,unit:"px"}))
+                ),
+                React.createElement("div",{style:{fontSize:8,color:"#666",marginTop:-4,marginBottom:10}},"현재 아트보드만 숫자 입력으로 크기를 조정합니다.")
+              );
+            })(),
             React.createElement("button",{onClick:function(){
               saveHistory();
               setBoardDefaults(function(p){var n=Object.assign({},p); n[activeBoard]=overrides[activeBoard]||{}; return n;});
@@ -1179,8 +1226,7 @@ export default function App(){
             
             React.createElement("button",{onClick:function(){
               saveHistory();
-              setBoardDefaults(function(p){var n=Object.assign({},p); delete n[activeBoard]; return n;});
-              setOverrides(function(prev){var n=Object.assign({},prev); delete n[activeBoard]; return n;});
+              resetBoardState(activeBoard);
             },style:{width:"100%",padding:"4px",border:"1px solid #333",borderRadius:3,background:"transparent",color:"#888",cursor:"pointer",fontSize:10,fontFamily:"inherit",marginTop:10}}, "초기 엔진 배치로 공장초기화")
           )
         ) : null,
@@ -1189,7 +1235,7 @@ export default function App(){
           ?activeLayerObj.type==="image"
             ?React.createElement("div",{style:{padding:10}},
                 React.createElement("div",{style:sT},"🖼 이미지 레이어"),
-                React.createElement("div",{style:{fontSize:9,color:"#444",marginBottom:6}},"아트보드: "+(allSizes.find(function(s){return s.id===activeBoard})||{}).w+"×"+(allSizes.find(function(s){return s.id===activeBoard})||{}).h),
+                React.createElement("div",{style:{fontSize:9,color:"#444",marginBottom:6}},"아트보드: "+((getSizeById(activeBoard)||{}).w)+"×"+((getSizeById(activeBoard)||{}).h)),
                 selectedEls.length === 1 && React.createElement("div",{style:{display:"flex",gap:4,marginBottom:10}},
                   [{k:'L',l:'⇤'},{k:'C',l:'↔'},{k:'R',l:'⇥'},{k:'T',l:'⇡'},{k:'M',l:'↕'},{k:'B',l:'⇣'}].map(function(btn){
                     return React.createElement("button",{key:btn.k,onClick:function(){alignSelected(btn.k)},style:{flex:1,padding:"3px",border:"1px solid #222",borderRadius:2,cursor:"pointer",fontSize:12,background:"#1a1a1a",color:"#00d4ff"}},btn.l)
@@ -1201,11 +1247,11 @@ export default function App(){
                     React.createElement(NumberInput,{label:"X(%)",value:er.x,onFocus:saveHistory,onChange:function(v){setOv(activeBoard,activeEl,{x:v})},min:-50,max:100,unit:"%"}),
                     React.createElement(NumberInput,{label:"Y(%)",value:er.y,onFocus:saveHistory,onChange:function(v){setOv(activeBoard,activeEl,{y:v})},min:-50,max:100,unit:"%"}),
                     React.createElement(NumberInput,{label:"W(%)",value:er.w,onFocus:saveHistory,onChange:function(v){
-                      var sz = allSizes.find(function(s){return s.id===activeBoard});
+                      var sz = getSizeById(activeBoard);
                       setOv(activeBoard,activeEl,{w:Math.max(5,v), h:Math.max(5,v)*(sz.w/sz.h)})
                     },min:5,max:200,unit:"%"}),
                     React.createElement(NumberInput,{label:"H(%)",value:er.h,onFocus:saveHistory,onChange:function(v){
-                      var sz = allSizes.find(function(s){return s.id===activeBoard});
+                      var sz = getSizeById(activeBoard);
                       setOv(activeBoard,activeEl,{w:Math.max(5,v)*(sz.h/sz.w), h:Math.max(5,v)})
                     },min:5,max:200,unit:"%"})
                   )
