@@ -945,7 +945,7 @@ export default function App(){
     );
   }
 
-  return React.createElement("div",{style:{width:"100%",minHeight:"100vh",background:"linear-gradient(180deg,#0b1017 0%, #0f1720 100%)",color:MD.text,fontFamily:"Roboto,'Noto Sans KR',sans-serif",fontSize:12,display:"flex",flexDirection:"column"}},
+  return React.createElement("div",{style:{width:"100%",height:"100vh",maxHeight:"100vh",background:"linear-gradient(180deg,#0b1017 0%, #0f1720 100%)",color:MD.text,fontFamily:"Roboto,'Noto Sans KR',sans-serif",fontSize:12,display:"flex",flexDirection:"column",overflow:"hidden"}},
 
     /* HEADER */
     React.createElement("div",{style:{height:64,background:"rgba(11,16,23,.92)",backdropFilter:"blur(18px)",borderBottom:"1px solid "+MD.line,display:"flex",alignItems:"center",padding:"0 16px",gap:10,flexShrink:0,boxShadow:"0 1px 0 rgba(255,255,255,.02), 0 6px 18px rgba(0,0,0,.2)"}},
@@ -982,7 +982,7 @@ export default function App(){
       React.createElement("button",{onClick:handleExport,disabled:exportCount===0,style:{padding:"9px 16px",borderRadius:999,fontSize:11,border:"none",fontFamily:"inherit",fontWeight:700,cursor:exportCount?"pointer":"default",background:exportCount?MD.primary:"#dfe4ec",color:exportCount?"#fff":"#93a0b3",boxShadow:exportCount?"0 8px 16px rgba(26,115,232,.2)":"none"}},"⬇ Export"+(exportCount?" ("+exportCount+")":""))
     ),
 
-    React.createElement("div",{style:{display:"flex",flex:1,overflow:"hidden"}},
+    React.createElement("div",{style:{display:"flex",flex:1,overflow:"hidden",minHeight:0}},
 
       /* LEFT */
       React.createElement("div",{style:{width:260,background:MD.surface,borderRight:"1px solid "+MD.line,overflowY:"auto",flexShrink:0,boxShadow:"inset -1px 0 0 rgba(255,255,255,.03)"}},
