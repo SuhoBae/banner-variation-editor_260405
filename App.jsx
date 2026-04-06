@@ -90,7 +90,19 @@ function measureTextBlock(text,fontSize,fontFamily,fontWeight,lineHeight,maxWidt
 }
 function readEditableText(node){
   if(!node) return "";
-  return String(node.innerText || "").replace(/\u00A0/g," ");
+  function walk(current){
+    if(!current) return "";
+    if(current.nodeType===3) return current.nodeValue || "";
+    if(current.nodeName==="BR") return "\n";
+    var out="";
+    var children=Array.from(current.childNodes || []);
+    children.forEach(function(child,index){
+      out += walk(child);
+      if((child.nodeName==="DIV" || child.nodeName==="P") && index < children.length-1) out += "\n";
+    });
+    return out;
+  }
+  return walk(node).replace(/\u00A0/g," ");
 }
 function NI(p){return React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4,marginBottom:5}},React.createElement("span",{style:{fontSize:10,color:MD.muted,width:48,flexShrink:0}},p.label),React.createElement("input",{type:"number",min:p.min,max:p.max,step:p.step||1,value:Math.round(p.value*100)/100,onFocus:p.onFocus,onChange:function(e){p.onChange(+e.target.value)},style:Object.assign({},iS,{flex:1})}),p.unit&&React.createElement("span",{style:{fontSize:9,color:MD.muted,width:16}},p.unit))}
 function renderResizeHandles(sid,lid,beginDrag,fitLayerToContent){
@@ -900,7 +912,7 @@ export default function App(){
               isSel && !isEditingText && React.createElement("div",{onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")},style:{position:"absolute",inset:-6,cursor:spaceHeld?"grab":"move",background:"transparent"}}),
               isSel&&React.createElement("div",{onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")},style:{position:"absolute",top:-8,left:0,fontSize:labelFontSize,color:MD.primary,lineHeight:1,pointerEvents:"auto",whiteSpace:"nowrap",fontWeight:700,letterSpacing:".02em",cursor:spaceHeld?"grab":"move"}},getLayerDisplayName(layer)),
               isEditingText && !isCta
-                ?React.createElement("div",{ref:editingRef,id:"layer-content-"+sz.id+"-"+layer.id,contentEditable:true,suppressContentEditableWarning:true,onClick:function(e){e.stopPropagation();},onMouseDown:function(e){e.stopPropagation();},onCompositionStart:function(){isComposingRef.current=true;},onCompositionEnd:function(e){isComposingRef.current=false;editingDraftRef.current=readEditableText(e.currentTarget);setTick(function(c){return c+1});},onInput:function(e){editingDraftRef.current=readEditableText(e.currentTarget);setTick(function(c){return c+1});},onBlur:function(){if(isComposingRef.current) return; commitEditingText(sz.id,layer.id,false);},onKeyDown:function(e){if(e.key==="Escape"){e.preventDefault();commitEditingText(sz.id,layer.id,true);e.currentTarget.blur();}},style:{minWidth:"100%",minHeight:"100%",whiteSpace:"pre-wrap",wordBreak:"keep-all",display:"block",width:"100%",background:"transparent",outline:"none",overflow:"visible",cursor:"text"}})
+                ?React.createElement("div",{ref:editingRef,id:"layer-content-"+sz.id+"-"+layer.id,contentEditable:true,suppressContentEditableWarning:true,onClick:function(e){e.stopPropagation();},onMouseDown:function(e){e.stopPropagation();},onCompositionStart:function(){isComposingRef.current=true;},onCompositionEnd:function(e){isComposingRef.current=false;editingDraftRef.current=readEditableText(e.currentTarget);requestAnimationFrame(function(){setTick(function(c){return c+1});});},onInput:function(e){editingDraftRef.current=readEditableText(e.currentTarget);requestAnimationFrame(function(){setTick(function(c){return c+1});});},onBlur:function(){if(isComposingRef.current) return; commitEditingText(sz.id,layer.id,false);},onKeyDown:function(e){if(e.key==="Escape"){e.preventDefault();commitEditingText(sz.id,layer.id,true);e.currentTarget.blur();return;} if(e.key==="Enter"){requestAnimationFrame(function(){editingDraftRef.current=readEditableText(e.currentTarget);setTick(function(c){return c+1});});}},style:{minWidth:"100%",minHeight:"100%",whiteSpace:"pre-wrap",wordBreak:"keep-all",display:"block",width:"100%",background:"transparent",outline:"none",overflow:"visible",cursor:"text"}})
                 :isCta&&layer.bg
                   ?React.createElement("span",{id:"layer-content-"+sz.id+"-"+layer.id,style:{background:layer.bg,padding:(dfs*0.2)+"px "+(dfs*0.3)+"px",borderRadius:999,whiteSpace:"nowrap",display:"inline-flex",alignItems:"center",justifyContent:"center",lineHeight:1,boxShadow:"0 1px 3px rgba(0,0,0,.12)"}} ,layer.content)
                   :React.createElement("span",{id:"layer-content-"+sz.id+"-"+layer.id,style:{whiteSpace:"pre-wrap",wordBreak:"keep-all",display:"block",width:"100%",overflow:"visible"}},layer.content),
