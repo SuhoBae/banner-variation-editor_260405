@@ -6,6 +6,7 @@ export default function ResizeHandles(props) {
   var lid = props.lid;
   var beginDrag = props.beginDrag;
   var fitLayerToContent = props.fitLayerToContent;
+  var allowVertical = props.allowVertical !== false;
   var handleStyle = { width: 4, height: 4, borderRadius: 1, background: MD.primary, border: "0.5px solid #fff" };
 
   function createHandle(mode, style) {
@@ -28,7 +29,7 @@ export default function ResizeHandles(props) {
     createHandle("resize-se", { bottom: -2, right: -2, cursor: "nwse-resize" }),
     createHandle("resize-e", { top: "50%", right: -2, transform: "translateY(-50%)", cursor: "ew-resize" }),
     createHandle("resize-w", { top: "50%", left: -2, transform: "translateY(-50%)", cursor: "ew-resize" }),
-    createHandle("resize-s", { left: "50%", bottom: -2, transform: "translateX(-50%)", cursor: "ns-resize" }),
-    createHandle("resize-n", { left: "50%", top: -2, transform: "translateX(-50%)", cursor: "ns-resize" })
+    allowVertical && createHandle("resize-s", { left: "50%", bottom: -2, transform: "translateX(-50%)", cursor: "ns-resize" }),
+    allowVertical && createHandle("resize-n", { left: "50%", top: -2, transform: "translateX(-50%)", cursor: "ns-resize" })
   );
 }

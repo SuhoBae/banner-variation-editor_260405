@@ -667,6 +667,8 @@ export default function App(){
       }
       else{
         var sp = d.sps.find(function(s){return s.id===d.lid}).r;
+        var dragBaseLayer = layers.find(function(l){return l.id===d.lid});
+        var isTextLike = dragBaseLayer && dragBaseLayer.type==="text";
         var next = {x:sp.x,y:sp.y,w:sp.w,h:sp.h};
         var sz = allSizes.find(function(s){return s.id===d.sid});
         var resizeBoostX = pxZ * 1.8;
@@ -691,9 +693,17 @@ export default function App(){
           if(d.act==="resize-w") next.x = sp.x + (sp.w - next.w);
           if(d.act==="resize-n") next.y = sp.y + (sp.h - next.h);
         }
-        if(!d.lid.startsWith("img") && d.act==="resize-se"){
+        if(isTextLike && (d.act==="resize-e" || d.act==="resize-w")){
+          next.h = null;
+        }
+        if(isTextLike && d.act==="resize-se"){
           var scaleRatio = Math.max(next.w / Math.max(sp.w, 0.01), next.h / Math.max(sp.h, 0.01));
           next.fs = Math.round(clamp(sp.fs * scaleRatio, 6, 300));
+          next.h = null;
+        }
+        if(!isTextLike && !d.lid.startsWith("img") && d.act==="resize-se"){
+          var freeScaleRatio = Math.max(next.w / Math.max(sp.w, 0.01), next.h / Math.max(sp.h, 0.01));
+          next.fs = Math.round(clamp(sp.fs * freeScaleRatio, 6, 300));
         }
         next.manualBox = true;
         setOv(d.sid, d.lid, next);
@@ -973,7 +983,7 @@ export default function App(){
                             ),
                 isSel&&React.createElement(React.Fragment,null,
                   React.createElement("div",{onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")},style:{position:"absolute",inset:-6,cursor:spaceHeld?"grab":"move",background:"transparent"}}),
-                  React.createElement(ResizeHandles,{sid:sz.id,lid:layer.id,beginDrag:beginDrag,fitLayerToContent:fitLayerToContent}),
+                  React.createElement(ResizeHandles,{sid:sz.id,lid:layer.id,beginDrag:beginDrag,fitLayerToContent:fitLayerToContent,allowVertical:true}),
                   React.createElement("div",{onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")},style:{position:"absolute",top:-8,left:0,fontSize:labelFontSize,color:MD.primary,lineHeight:1,pointerEvents:"auto",whiteSpace:"nowrap",fontWeight:700,letterSpacing:".02em",cursor:spaceHeld?"grab":"move"}},getLayerDisplayName(layer)),
                   React.createElement("div",{onMouseDown:function(e){if(e.button!==0)return; e.stopPropagation();e.preventDefault();saveHistory();setOverrides(function(prev){var n=Object.assign({},prev);if(n[sz.id]){var b=Object.assign({},n[sz.id]);delete b[layer.id];n[sz.id]=b}return n})},style:Object.assign({},hSt,{top:-1.5,left:-1.5,cursor:"pointer",background:"#ff5a5a",fontSize:5.5,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",width:8,height:8,borderRadius:999,border:"0.5px solid #fff"})},"↺")
                 )
@@ -993,7 +1003,7 @@ export default function App(){
                 :isCta&&layer.bg
                   ?React.createElement("span",{id:"layer-content-"+sz.id+"-"+layer.id,style:{background:layer.bg,padding:(dfs*0.2)+"px "+(dfs*0.3)+"px",borderRadius:999,whiteSpace:"nowrap",display:"inline-flex",alignItems:"center",justifyContent:"center",lineHeight:1,boxShadow:"0 1px 3px rgba(0,0,0,.12)"}} ,layer.content)
                   :React.createElement("span",{id:"layer-content-"+sz.id+"-"+layer.id,style:{position:"absolute",top:0,left:0,whiteSpace:textUsesManualBox?"pre-wrap":"pre",wordBreak:"keep-all",display:"block",width:"100%",maxWidth:"100%",overflow:"visible"}},layer.content),
-              isSel&&React.createElement(ResizeHandles,{sid:sz.id,lid:layer.id,beginDrag:beginDrag,fitLayerToContent:fitLayerToContent})
+              isSel&&React.createElement(ResizeHandles,{sid:sz.id,lid:layer.id,beginDrag:beginDrag,fitLayerToContent:fitLayerToContent,allowVertical:false})
             )
           );
         }),
@@ -1232,7 +1242,13 @@ export default function App(){
                   React.createElement(NumberInput,{label:"X(%)",value:er.x,onFocus:saveHistory,onChange:function(v){setOv(activeBoard,activeEl,{x:v})},min:-50,max:150,unit:"%"}),
                   React.createElement(NumberInput,{label:"Y(%)",value:er.y,onFocus:saveHistory,onChange:function(v){setOv(activeBoard,activeEl,{y:v})},min:-50,max:150,unit:"%"}),
                   React.createElement(NumberInput,{label:"W(%)",value:er.w,onFocus:saveHistory,onChange:function(v){setOv(activeBoard,activeEl,{w:clamp(v,5,200)})},min:5,max:200,unit:"%"}),
-                  React.createElement(NumberInput,{label:"H(%)",value:er.h,onFocus:saveHistory,onChange:function(v){setOv(activeBoard,activeEl,{h:clamp(v,3,200)})},min:3,max:200,unit:"%"}),
+                  React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4,marginBottom:5}},
+                    React.createElement("span",{style:{fontSize:10,color:MD.muted,width:48,flexShrink:0}},"H(%)"),
+                    React.createElement("div",{style:Object.assign({},iS,{flex:1,display:"flex",alignItems:"center",justifyContent:"space-between"})},
+                      React.createElement("span",null,Math.round(er.h*100)/100),
+                      React.createElement("span",{style:{fontSize:10,color:MD.muted}},"auto")
+                    )
+                  ),
                   React.createElement(NumberInput,{label:"폰트",value:er.fs,onFocus:saveHistory,onChange:function(v){setOv(activeBoard,activeEl,{fs:clamp(v,6,300)})},min:6,max:300,unit:"px"})
                 )})(),
                 React.createElement("button",{onClick:function(){saveHistory();clearBoardLayerOverride(activeBoard,activeEl)},style:{width:"100%",padding:"4px",border:"1px solid #222",borderRadius:3,background:"#0a0a0a",color:"#555",cursor:"pointer",fontSize:10,fontFamily:"inherit",marginTop:4}},"오버라이드 리셋"),
