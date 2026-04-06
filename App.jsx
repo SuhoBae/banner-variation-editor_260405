@@ -988,7 +988,7 @@ export default function App(){
       React.createElement("div",{style:{width:260,background:MD.surface,borderRight:"1px solid "+MD.line,overflowY:"auto",flexShrink:0,boxShadow:"inset -1px 0 0 rgba(255,255,255,.03)"}},
         React.createElement("div",{style:{padding:10,borderBottom:"1px solid #1a1a1a"}},
           React.createElement("div",{style:sT},"🗂 레이어"),
-          layers.map(function(l){var boardLayer = activeBoard ? getLayerForBoard(activeBoard, l) : l; var isImg=l.type==="image";var roleLabel=isImg?"IMAGE":(ROLES.find(function(r){return r.key===l.role})||{}).label||l.role;var layerName=getLayerDisplayName(boardLayer);var sub=isImg?(boardLayer.src?boardLayer.imgW+"×"+boardLayer.imgH+" PNG":"이미지 없음"):boardLayer.content;
+          layers.map(function(l){var boardLayer = activeBoard ? getLayerForBoard(activeBoard, l) : l; var isImg=l.type==="image";var roleLabel=isImg?"image":"text";var layerName=getLayerDisplayName(boardLayer);var sub=isImg?(boardLayer.src?boardLayer.imgW+"×"+boardLayer.imgH+" PNG":"이미지 없음"):boardLayer.content;
             var isSelected = selectedEls.indexOf(l.id) !== -1;
             var layerHidden = activeBoard ? !!boardLayer.hidden : !boardLayer.visible;
             return React.createElement("div",{key:l.id,onClick:function(e){
