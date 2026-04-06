@@ -34,3 +34,9 @@
 - Artboard size edits must apply only to the selected board, not globally to all preset boards.
 - Resolved board size must be the single source used by board rendering, layer measurement, drag/resize math, and export.
 - Resetting a board must also clear its size override so the preset or custom base size is restored.
+
+## Compatibility Requirement (2026-04-07)
+- The editor must remain usable across Windows Chrome and macOS Safari/WebKit.
+- Number inputs, textarea overlays, and resize handles must avoid browser-native clipping or disappearing UI.
+- Browser-specific visual features such as blur or scrollbar hiding must degrade gracefully and include WebKit-safe handling where applicable.
+- Compatibility checks must be recorded in project docs whenever a control relies on custom form styling or tiny absolute-positioned interaction targets.

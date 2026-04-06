@@ -174,6 +174,19 @@ Situation: The new artboard size number inputs were visually cramped in the narr
 
 Resolution: Restacked the artboard width/height inputs vertically, tightened `NumberInput` label and unit widths, and applied `min-width: 0` plus number-field appearance cleanup to prevent clipping. Added lightweight global hover/active transitions for editor buttons and context items so clicks feel tactile without changing existing layout logic.
 
+## Cross-Platform Compatibility Rule (2026-04-07)
+- Any new UI control must be checked for Chrome + Safari/WebKit compatibility before shipping.
+- Do not rely on a browser-specific CSS property without adding a fallback or vendor-prefixed companion when needed.
+- Small interactive targets such as resize handles must use explicit box sizing, fixed pixel dimensions, and non-text-selection styles so they render consistently on macOS retina displays.
+- Form controls must avoid clipped native UI by normalizing `appearance`, `WebkitAppearance`, and spinner behavior for number inputs.
+- Blur, scrollbar hiding, and pressed-state interactions must include WebKit-safe handling where relevant.
+
+[2026-04-07] WebKit Compatibility Hardening Pass
+
+Situation: The user reported that resize handles and some inspector controls did not render consistently on macOS, which strongly suggested WebKit/Safari differences in form controls and tiny absolute-positioned UI.
+
+Resolution: Added WebKit-safe form normalization for number inputs, hid textarea scrollbars with a WebKit rule, added `WebkitBackdropFilter` for the header blur, and hardened resize handles with explicit min sizes, box sizing, touch/user-select guards, and tap-highlight removal. This pass improves static compatibility, but true Safari rendering still needs live verification on a Mac or Safari browser.
+
 [2026-04-06] line-height 실측 반영과 레이어명 편집 도입
 
 상황: 텍스트 레이어 선택 UI가 줄 수는 따라가더라도 `line-height` 값과 실제 줄바꿈 높이를 충분히 반영하지 못했고, 레이어 이동은 선택 스트로크 인식 영역이 좁아 잡기 어려웠음. 또한 좌측 레이어 패널에서 레이어명을 직접 정리할 수 없어 편집 캔버스와 목록 간의 맥락 연결이 약했음.

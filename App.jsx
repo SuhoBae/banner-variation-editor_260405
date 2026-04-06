@@ -268,7 +268,7 @@ export default function App(){
 
   useEffect(function(){
     var l=document.createElement("link");l.href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;800;900&family=Nanum+Gothic:wght@400;700;800&family=Noto+Serif+KR:wght@300;400;500;700;900&family=Black+Han+Sans&family=Roboto:wght@300;400;500;700;900&family=Montserrat:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@400;500;600;700;800;900&family=Oswald:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap";l.rel="stylesheet";document.head.appendChild(l);
-    var s=document.createElement("style");s.innerHTML=".ctx-item { padding: 8px 10px; font-size: 12px; color: "+MD.text+"; cursor: pointer; border-radius: 10px; transition: transform .08s ease, background-color .16s ease, color .16s ease, filter .16s ease; } .ctx-item:hover { background: "+MD.primarySoft+"; color: "+MD.primary+"; } .ctx-item:active { transform: translateY(1px) scale(.985); filter: brightness(.97); } .ctx-item.danger:hover { background: "+MD.dangerSoft+"; color: "+MD.danger+"; } .app-shell button { transition: transform .08s ease, filter .16s ease, box-shadow .16s ease, background-color .16s ease, border-color .16s ease; } .app-shell button:not(:disabled):hover { filter: brightness(1.04); } .app-shell button:not(:disabled):active { transform: translateY(1px) scale(.985); filter: brightness(.96); } .app-shell input[type=number]::-webkit-outer-spin-button, .app-shell input[type=number]::-webkit-inner-spin-button { margin: 0; }";document.head.appendChild(s);
+    var s=document.createElement("style");s.innerHTML=".ctx-item { padding: 8px 10px; font-size: 12px; color: "+MD.text+"; cursor: pointer; border-radius: 10px; transition: transform .08s ease, background-color .16s ease, color .16s ease, filter .16s ease; } .ctx-item:hover { background: "+MD.primarySoft+"; color: "+MD.primary+"; } .ctx-item:active { transform: translateY(1px) scale(.985); filter: brightness(.97); } .ctx-item.danger:hover { background: "+MD.dangerSoft+"; color: "+MD.danger+"; } .app-shell { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; } .app-shell button { transition: transform .08s ease, filter .16s ease, box-shadow .16s ease, background-color .16s ease, border-color .16s ease; -webkit-tap-highlight-color: transparent; } .app-shell button:not(:disabled):hover { filter: brightness(1.04); } .app-shell button:not(:disabled):active { transform: translateY(1px) scale(.985); filter: brightness(.96); } .app-shell input[type=number] { -webkit-appearance: none; appearance: textfield; } .app-shell input[type=number]::-webkit-outer-spin-button, .app-shell input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; } .app-shell textarea::-webkit-scrollbar { width: 0; height: 0; display: none; }";document.head.appendChild(s);
   },[]);
   
   useEffect(function(){
@@ -1076,7 +1076,21 @@ export default function App(){
 return React.createElement("div",{className:"app-shell",style:{width:"100%",height:"100vh",maxHeight:"100vh",background:"linear-gradient(180deg,#0b1017 0%, #0f1720 100%)",color:MD.text,fontFamily:"Roboto,'Noto Sans KR',sans-serif",fontSize:12,display:"flex",flexDirection:"column",overflow:"hidden"}},
 
     /* HEADER */
-    React.createElement("div",{style:{height:64,background:"rgba(11,16,23,.92)",backdropFilter:"blur(18px)",borderBottom:"1px solid "+MD.line,display:"flex",alignItems:"center",padding:"0 16px",gap:10,flexShrink:0,boxShadow:"0 1px 0 rgba(255,255,255,.02), 0 6px 18px rgba(0,0,0,.2)"}},
+    React.createElement("div",{
+      style:{
+        height:64,
+        background:"rgba(11,16,23,.92)",
+        backdropFilter:"blur(18px)",
+        WebkitBackdropFilter:"blur(18px)",
+        borderBottom:"1px solid "+MD.line,
+        display:"flex",
+        alignItems:"center",
+        padding:"0 16px",
+        gap:10,
+        flexShrink:0,
+        boxShadow:"0 1px 0 rgba(255,255,255,.02), 0 6px 18px rgba(0,0,0,.2)"
+      }
+    },
       React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6}},
         React.createElement("div",{style:{width:28,height:28,borderRadius:10,background:"linear-gradient(135deg,#1a73e8,#34a853)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:900,color:"#fff",boxShadow:"0 8px 16px rgba(26,115,232,.2)"}},"A"),
         React.createElement("div",null,

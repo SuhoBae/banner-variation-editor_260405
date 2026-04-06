@@ -7,10 +7,25 @@ export default function ResizeHandles(props) {
   var beginDrag = props.beginDrag;
   var fitLayerToContent = props.fitLayerToContent;
   var allowVertical = props.allowVertical !== false;
-  var handleStyle = { width: 4, height: 4, borderRadius: 1, background: MD.primary, border: "0.5px solid #fff" };
+  var handleStyle = {
+    width: 4,
+    height: 4,
+    minWidth: 4,
+    minHeight: 4,
+    borderRadius: 1,
+    background: MD.primary,
+    border: "0.5px solid #fff",
+    boxSizing: "border-box",
+    pointerEvents: "auto",
+    touchAction: "none",
+    userSelect: "none",
+    WebkitUserSelect: "none",
+    WebkitTapHighlightColor: "transparent"
+  };
 
   function createHandle(mode, style) {
     return React.createElement("div", {
+      "data-resize-handle": mode,
       onMouseDown: function (event) {
         beginDrag(event, sid, lid, mode);
       },

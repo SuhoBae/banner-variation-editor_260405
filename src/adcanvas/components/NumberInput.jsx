@@ -16,7 +16,17 @@ export default function NumberInput(props) {
       onChange: function (event) {
         props.onChange(+event.target.value);
       },
-      style: Object.assign({}, iS, { flex: 1, minWidth: 0, width: 0, paddingRight: 8, appearance: "textfield", MozAppearance: "textfield" }),
+      style: Object.assign({}, iS, {
+        flex: 1,
+        minWidth: 0,
+        width: 0,
+        paddingRight: 8,
+        appearance: "textfield",
+        MozAppearance: "textfield",
+        WebkitAppearance: "none",
+        borderRadius: 12,
+        lineHeight: 1.2
+      }),
     }),
     props.unit && React.createElement("span", { style: { fontSize: 9, color: MD.muted, width: 18, flexShrink: 0, textAlign: "right" } }, props.unit)
   );
