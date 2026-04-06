@@ -561,8 +561,8 @@ export default function App(){
       var isEditingActive = editingTextId===layer.id && activeBoard===sid && activeEl===layer.id;
       var textContent = String((isEditingActive ? editingDraftValue : layer.content) || "");
       var manualBox = hasManualBoxOverride(sid,layer.id);
-      var useManualBox = manualBox;
-      var constrainedWidthPx = useManualBox && ov.w!=null ? (ov.w / 100) * sz.w : null;
+      var usesManualWidth = manualBox && ov.w!=null;
+      var constrainedWidthPx = usesManualWidth ? (ov.w / 100) * sz.w : null;
       var measured = measureTextBlock(textContent, fs, layer.font, layer.weight, layer.lh, layer.role==="cta" ? null : constrainedWidthPx);
       var intrinsicW = (measured.width / sz.w) * 100;
       var intrinsicH = (measured.height / sz.h) * 100;
@@ -574,10 +574,12 @@ export default function App(){
       var defaultH = clamp(intrinsicH, 2, 200);
       var defaultX = rx;
       var defaultY = ry;
-      if(layer.align==="center") defaultX = rx + ((rw - defaultW) / 2);
-      if(layer.align==="right") defaultX = rx + (rw - defaultW);
+      var resolvedW = usesManualWidth ? ov.w : defaultW;
+      var resolvedH = ov.h != null ? Math.max(ov.h, defaultH) : defaultH;
+      if(layer.align==="center") defaultX = rx + ((rw - resolvedW) / 2);
+      if(layer.align==="right") defaultX = rx + (rw - resolvedW);
       if(layer.role==="cta") defaultY = ry + ((rh - defaultH) / 2);
-      return {x:ov.x!=null?ov.x:defaultX,y:ov.y!=null?ov.y:defaultY,w:useManualBox&&ov.w!=null?ov.w:defaultW,h:useManualBox&&ov.h!=null?ov.h:defaultH,fs:fs};
+      return {x:ov.x!=null?ov.x:defaultX,y:ov.y!=null?ov.y:defaultY,w:resolvedW,h:resolvedH,fs:fs};
     }
     return{x:ov.x!=null?ov.x:rx,y:ov.y!=null?ov.y:ry,w:ov.w!=null?ov.w:rw,h:ov.h!=null?ov.h:rh,fs:fs};
   }
