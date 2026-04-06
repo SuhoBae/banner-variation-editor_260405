@@ -168,6 +168,12 @@ Situation: The user needed to change the currently selected artboard size direct
 
 Resolution: Added `boardSizeOverrides` as a board-scoped state layer and routed artboard measurement through `getSizeById()` so rendering, layer geometry, image ratio calculations, and inspector labels all read the same resolved size. Reset actions now clear board size overrides together with board defaults and layer overrides.
 
+[2026-04-06] Inspector Input Legibility and Button Press Feedback
+
+Situation: The new artboard size number inputs were visually cramped in the narrow inspector and values could look clipped. Buttons across the editor also lacked clear pressed-state feedback.
+
+Resolution: Restacked the artboard width/height inputs vertically, tightened `NumberInput` label and unit widths, and applied `min-width: 0` plus number-field appearance cleanup to prevent clipping. Added lightweight global hover/active transitions for editor buttons and context items so clicks feel tactile without changing existing layout logic.
+
 [2026-04-06] line-height 실측 반영과 레이어명 편집 도입
 
 상황: 텍스트 레이어 선택 UI가 줄 수는 따라가더라도 `line-height` 값과 실제 줄바꿈 높이를 충분히 반영하지 못했고, 레이어 이동은 선택 스트로크 인식 영역이 좁아 잡기 어려웠음. 또한 좌측 레이어 패널에서 레이어명을 직접 정리할 수 없어 편집 캔버스와 목록 간의 맥락 연결이 약했음.

@@ -268,7 +268,7 @@ export default function App(){
 
   useEffect(function(){
     var l=document.createElement("link");l.href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;800;900&family=Nanum+Gothic:wght@400;700;800&family=Noto+Serif+KR:wght@300;400;500;700;900&family=Black+Han+Sans&family=Roboto:wght@300;400;500;700;900&family=Montserrat:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@400;500;600;700;800;900&family=Oswald:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap";l.rel="stylesheet";document.head.appendChild(l);
-    var s=document.createElement("style");s.innerHTML=".ctx-item { padding: 8px 10px; font-size: 12px; color: "+MD.text+"; cursor: pointer; border-radius: 10px; } .ctx-item:hover { background: "+MD.primarySoft+"; color: "+MD.primary+"; } .ctx-item.danger:hover { background: "+MD.dangerSoft+"; color: "+MD.danger+"; }";document.head.appendChild(s);
+    var s=document.createElement("style");s.innerHTML=".ctx-item { padding: 8px 10px; font-size: 12px; color: "+MD.text+"; cursor: pointer; border-radius: 10px; transition: transform .08s ease, background-color .16s ease, color .16s ease, filter .16s ease; } .ctx-item:hover { background: "+MD.primarySoft+"; color: "+MD.primary+"; } .ctx-item:active { transform: translateY(1px) scale(.985); filter: brightness(.97); } .ctx-item.danger:hover { background: "+MD.dangerSoft+"; color: "+MD.danger+"; } .app-shell button { transition: transform .08s ease, filter .16s ease, box-shadow .16s ease, background-color .16s ease, border-color .16s ease; } .app-shell button:not(:disabled):hover { filter: brightness(1.04); } .app-shell button:not(:disabled):active { transform: translateY(1px) scale(.985); filter: brightness(.96); } .app-shell input[type=number]::-webkit-outer-spin-button, .app-shell input[type=number]::-webkit-inner-spin-button { margin: 0; }";document.head.appendChild(s);
   },[]);
   
   useEffect(function(){
@@ -1073,7 +1073,7 @@ export default function App(){
     );
   }
 
-  return React.createElement("div",{style:{width:"100%",height:"100vh",maxHeight:"100vh",background:"linear-gradient(180deg,#0b1017 0%, #0f1720 100%)",color:MD.text,fontFamily:"Roboto,'Noto Sans KR',sans-serif",fontSize:12,display:"flex",flexDirection:"column",overflow:"hidden"}},
+return React.createElement("div",{className:"app-shell",style:{width:"100%",height:"100vh",maxHeight:"100vh",background:"linear-gradient(180deg,#0b1017 0%, #0f1720 100%)",color:MD.text,fontFamily:"Roboto,'Noto Sans KR',sans-serif",fontSize:12,display:"flex",flexDirection:"column",overflow:"hidden"}},
 
     /* HEADER */
     React.createElement("div",{style:{height:64,background:"rgba(11,16,23,.92)",backdropFilter:"blur(18px)",borderBottom:"1px solid "+MD.line,display:"flex",alignItems:"center",padding:"0 16px",gap:10,flexShrink:0,boxShadow:"0 1px 0 rgba(255,255,255,.02), 0 6px 18px rgba(0,0,0,.2)"}},
@@ -1211,9 +1211,9 @@ export default function App(){
               var activeSize = getSizeById(activeBoard) || {};
               return React.createElement(React.Fragment,null,
                 React.createElement("div",{style:{fontSize:11, color:"#ccc", marginBottom:10}}, activeSize.w+"×"+activeSize.h+" "+(activeSize.label||"")),
-                React.createElement("div",{style:{display:"flex",gap:6,marginBottom:10}},
-                  React.createElement("div",{style:{flex:1}},React.createElement(NumberInput,{label:"W",value:activeSize.w||0,onFocus:saveHistory,onChange:function(v){setBoardSizeProp(activeBoard,"w",v)},min:50,max:4000,step:10,unit:"px"})),
-                  React.createElement("div",{style:{flex:1}},React.createElement(NumberInput,{label:"H",value:activeSize.h||0,onFocus:saveHistory,onChange:function(v){setBoardSizeProp(activeBoard,"h",v)},min:50,max:4000,step:10,unit:"px"}))
+                React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:2,marginBottom:10,minWidth:0}},
+                  React.createElement(NumberInput,{label:"W",value:activeSize.w||0,onFocus:saveHistory,onChange:function(v){setBoardSizeProp(activeBoard,"w",v)},min:50,max:4000,step:10,unit:"px"}),
+                  React.createElement(NumberInput,{label:"H",value:activeSize.h||0,onFocus:saveHistory,onChange:function(v){setBoardSizeProp(activeBoard,"h",v)},min:50,max:4000,step:10,unit:"px"})
                 ),
                 React.createElement("div",{style:{fontSize:8,color:"#666",marginTop:-4,marginBottom:10}},"현재 아트보드만 숫자 입력으로 크기를 조정합니다.")
               );
