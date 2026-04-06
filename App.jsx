@@ -88,6 +88,10 @@ function measureTextBlock(text,fontSize,fontFamily,fontWeight,lineHeight,maxWidt
   document.body.removeChild(probe);
   return size;
 }
+function readEditableText(node){
+  if(!node) return "";
+  return String(node.innerText || "").replace(/\u00A0/g," ");
+}
 function NI(p){return React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4,marginBottom:5}},React.createElement("span",{style:{fontSize:10,color:MD.muted,width:48,flexShrink:0}},p.label),React.createElement("input",{type:"number",min:p.min,max:p.max,step:p.step||1,value:Math.round(p.value*100)/100,onFocus:p.onFocus,onChange:function(e){p.onChange(+e.target.value)},style:Object.assign({},iS,{flex:1})}),p.unit&&React.createElement("span",{style:{fontSize:9,color:MD.muted,width:16}},p.unit))}
 function renderResizeHandles(sid,lid,beginDrag,fitLayerToContent){
   var handleStyle = {width:4,height:4,borderRadius:1,background:MD.primary,border:"0.5px solid #fff"};
@@ -252,8 +256,10 @@ export default function App(){
   useEffect(function(){
     function kb(e){
       if(e.code==="Space"&&!e.repeat) {
-        var tag = document.activeElement ? document.activeElement.tagName : "";
-        if(tag!=="TEXTAREA" && tag!=="INPUT") { e.preventDefault(); setSpaceHeld(true); }
+        var activeNode = document.activeElement;
+        var tag = activeNode ? activeNode.tagName : "";
+        var isTypingTarget = !!(activeNode && (tag==="TEXTAREA" || tag==="INPUT" || activeNode.isContentEditable));
+        if(!isTypingTarget) { e.preventDefault(); setSpaceHeld(true); }
       }
       if(e.key==="Escape"){
         if(editingTextId && activeBoard && activeEl){
@@ -880,7 +886,7 @@ export default function App(){
                 isSel&&React.createElement(React.Fragment,null,
                   React.createElement("div",{onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")},style:{position:"absolute",inset:-6,cursor:spaceHeld?"grab":"move",background:"transparent"}}),
                   renderResizeHandles(sz.id,layer.id,beginDrag,fitLayerToContent),
-                  React.createElement("div",{style:{position:"absolute",top:-8,left:0,fontSize:labelFontSize,color:MD.primary,lineHeight:1,pointerEvents:"none",whiteSpace:"nowrap",fontWeight:700,letterSpacing:".02em"}},getLayerDisplayName(layer)),
+                  React.createElement("div",{onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")},style:{position:"absolute",top:-8,left:0,fontSize:labelFontSize,color:MD.primary,lineHeight:1,pointerEvents:"auto",whiteSpace:"nowrap",fontWeight:700,letterSpacing:".02em",cursor:spaceHeld?"grab":"move"}},getLayerDisplayName(layer)),
                   React.createElement("div",{onMouseDown:function(e){if(e.button!==0)return; e.stopPropagation();e.preventDefault();saveHistory();setOverrides(function(prev){var n=Object.assign({},prev);if(n[sz.id]){var b=Object.assign({},n[sz.id]);delete b[layer.id];n[sz.id]=b}return n})},style:Object.assign({},hSt,{top:-1.5,left:-1.5,cursor:"pointer",background:"#ff5a5a",fontSize:5.5,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",width:8,height:8,borderRadius:999,border:"0.5px solid #fff"})},"↺")
                 )
               )
@@ -890,11 +896,11 @@ export default function App(){
           var isEditingText = isSel && activeBoard===sz.id && activeEl===layer.id && editingTextId===layer.id;
           return React.createElement("div",{key:layer.id,
             style:{position:"absolute",left:er.x+"%",top:er.y+"%",width:er.w+"%",height:er.h+"%",display:"flex",alignItems:isCta?"center":"flex-start",justifyContent:layer.align==="center"?"center":layer.align==="right"?"flex-end":"flex-start",zIndex:isSel?15:layer.zIndex+2,userSelect:"none",pointerEvents:"none",overflow:"visible"}},
-            React.createElement("div",{id: "layer-"+sz.id+"-"+layer.id, onClick:function(e){e.stopPropagation();activateLayerSelection(sz.id,layer.id,[layer.id]);}, onMouseDown:function(e){if(isEditingText && !isCta) return; if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")}, onContextMenu:function(e){handleContextMenuLayer(e, sz.id, layer.id)}, style:{position:"relative",display:"flex",width:"100%",height:"100%",maxWidth:"100%",maxHeight:"100%",border:isSel?"0.5px solid rgba(124,196,255,.92)":"0.5px solid transparent", pointerEvents:"auto", cursor:spaceHeld?"grab":"move", fontFamily:'"'+layer.font+'","Noto Sans KR",sans-serif',fontSize:dfs,fontWeight:layer.weight,letterSpacing:layer.ls+"em",lineHeight:layer.lh,color:layer.color,textAlign:layer.align,alignItems:isCta?"center":"flex-start",justifyContent:layer.align==="center"?"center":layer.align==="right"?"flex-end":"flex-start",boxSizing:"border-box",overflow:"visible"}},
+            React.createElement("div",{id: "layer-"+sz.id+"-"+layer.id, onClick:function(e){e.stopPropagation();activateLayerSelection(sz.id,layer.id,[layer.id]);}, onMouseDown:function(e){if(isEditingText && !isCta){var editableNode=document.getElementById("layer-content-"+sz.id+"-"+layer.id);if(editableNode && editableNode.contains(e.target)) return;} if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")}, onContextMenu:function(e){handleContextMenuLayer(e, sz.id, layer.id)}, style:{position:"relative",display:"flex",width:"100%",height:"100%",maxWidth:"100%",maxHeight:"100%",border:isSel?"0.5px solid rgba(124,196,255,.92)":"0.5px solid transparent", pointerEvents:"auto", cursor:spaceHeld?"grab":"move", fontFamily:'"'+layer.font+'","Noto Sans KR",sans-serif',fontSize:dfs,fontWeight:layer.weight,letterSpacing:layer.ls+"em",lineHeight:layer.lh,color:layer.color,textAlign:layer.align,alignItems:isCta?"center":"flex-start",justifyContent:layer.align==="center"?"center":layer.align==="right"?"flex-end":"flex-start",boxSizing:"border-box",overflow:"visible"}},
               isSel && !isEditingText && React.createElement("div",{onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")},style:{position:"absolute",inset:-6,cursor:spaceHeld?"grab":"move",background:"transparent"}}),
-              isSel&&React.createElement("div",{style:{position:"absolute",top:-8,left:0,fontSize:labelFontSize,color:MD.primary,lineHeight:1,pointerEvents:"none",whiteSpace:"nowrap",fontWeight:700,letterSpacing:".02em"}},getLayerDisplayName(layer)),
+              isSel&&React.createElement("div",{onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")},style:{position:"absolute",top:-8,left:0,fontSize:labelFontSize,color:MD.primary,lineHeight:1,pointerEvents:"auto",whiteSpace:"nowrap",fontWeight:700,letterSpacing:".02em",cursor:spaceHeld?"grab":"move"}},getLayerDisplayName(layer)),
               isEditingText && !isCta
-                ?React.createElement("div",{ref:editingRef,id:"layer-content-"+sz.id+"-"+layer.id,contentEditable:true,suppressContentEditableWarning:true,onClick:function(e){e.stopPropagation();},onMouseDown:function(e){e.stopPropagation();},onCompositionStart:function(){isComposingRef.current=true;},onCompositionEnd:function(e){isComposingRef.current=false;editingDraftRef.current=e.currentTarget.innerText;},onInput:function(e){editingDraftRef.current=e.currentTarget.innerText;},onBlur:function(){if(isComposingRef.current) return; commitEditingText(sz.id,layer.id,false);},onKeyDown:function(e){if(e.key==="Escape"){e.preventDefault();commitEditingText(sz.id,layer.id,true);e.currentTarget.blur();}},style:{minWidth:"100%",minHeight:"100%",whiteSpace:"pre-wrap",wordBreak:"keep-all",display:"block",width:"100%",background:"transparent",outline:"none",overflow:"visible",cursor:"text"}})
+                ?React.createElement("div",{ref:editingRef,id:"layer-content-"+sz.id+"-"+layer.id,contentEditable:true,suppressContentEditableWarning:true,onClick:function(e){e.stopPropagation();},onMouseDown:function(e){e.stopPropagation();},onCompositionStart:function(){isComposingRef.current=true;},onCompositionEnd:function(e){isComposingRef.current=false;editingDraftRef.current=readEditableText(e.currentTarget);setTick(function(c){return c+1});},onInput:function(e){editingDraftRef.current=readEditableText(e.currentTarget);setTick(function(c){return c+1});},onBlur:function(){if(isComposingRef.current) return; commitEditingText(sz.id,layer.id,false);},onKeyDown:function(e){if(e.key==="Escape"){e.preventDefault();commitEditingText(sz.id,layer.id,true);e.currentTarget.blur();}},style:{minWidth:"100%",minHeight:"100%",whiteSpace:"pre-wrap",wordBreak:"keep-all",display:"block",width:"100%",background:"transparent",outline:"none",overflow:"visible",cursor:"text"}})
                 :isCta&&layer.bg
                   ?React.createElement("span",{id:"layer-content-"+sz.id+"-"+layer.id,style:{background:layer.bg,padding:(dfs*0.2)+"px "+(dfs*0.3)+"px",borderRadius:999,whiteSpace:"nowrap",display:"inline-flex",alignItems:"center",justifyContent:"center",lineHeight:1,boxShadow:"0 1px 3px rgba(0,0,0,.12)"}} ,layer.content)
                   :React.createElement("span",{id:"layer-content-"+sz.id+"-"+layer.id,style:{whiteSpace:"pre-wrap",wordBreak:"keep-all",display:"block",width:"100%",overflow:"visible"}},layer.content),
