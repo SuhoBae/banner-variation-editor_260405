@@ -67,6 +67,27 @@ function getZoomStep(deltaY){
   var factor = Math.exp((-deltaY / 100) * 0.16 * (magnitude / 40));
   return clamp(factor, .72, 1.32);
 }
+function measureTextBlock(text,fontSize,fontFamily,fontWeight,lineHeight,maxWidthPx){
+  var probe=document.createElement("div");
+  probe.style.position="absolute";
+  probe.style.left="-99999px";
+  probe.style.top="0";
+  probe.style.visibility="hidden";
+  probe.style.pointerEvents="none";
+  probe.style.boxSizing="border-box";
+  probe.style.whiteSpace="pre-wrap";
+  probe.style.wordBreak="keep-all";
+  probe.style.fontFamily='"'+fontFamily+'","Noto Sans KR",sans-serif';
+  probe.style.fontSize=fontSize+"px";
+  probe.style.fontWeight=String(fontWeight);
+  probe.style.lineHeight=String(lineHeight);
+  if(maxWidthPx!=null && isFinite(maxWidthPx)) probe.style.width=Math.max(maxWidthPx,1)+"px";
+  probe.textContent=text&&text.length?text:" ";
+  document.body.appendChild(probe);
+  var size={width:Math.ceil(probe.scrollWidth),height:Math.ceil(probe.scrollHeight)};
+  document.body.removeChild(probe);
+  return size;
+}
 function NI(p){return React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4,marginBottom:5}},React.createElement("span",{style:{fontSize:10,color:MD.muted,width:48,flexShrink:0}},p.label),React.createElement("input",{type:"number",min:p.min,max:p.max,step:p.step||1,value:Math.round(p.value*100)/100,onFocus:p.onFocus,onChange:function(e){p.onChange(+e.target.value)},style:Object.assign({},iS,{flex:1})}),p.unit&&React.createElement("span",{style:{fontSize:9,color:MD.muted,width:16}},p.unit))}
 function renderResizeHandles(sid,lid,beginDrag,fitLayerToContent){
   var handleStyle = {width:4,height:4,borderRadius:1,background:MD.primary,border:"0.5px solid #fff"};
@@ -80,6 +101,7 @@ function renderResizeHandles(sid,lid,beginDrag,fitLayerToContent){
 }
 function getLayerDisplayName(layer){
   if(!layer) return "";
+  if(layer.name) return layer.name;
   if(layer.type==="image") return layer.label || "이미지 영역";
   return (ROLES.find(function(r){return r.key===layer.role}) || {}).label || layer.role || "텍스트";
 }
@@ -97,10 +119,10 @@ export default function App(){
   var _ctx=useState(null);var ctxMenu=_ctx[0],setCtxMenu=_ctx[1]; 
 
   var _layers=useState([
-    {id:"img1",type:"image",label:"메인 비주얼",src:null,imgW:0,imgH:0,visible:true,zIndex:0},
-    {id:"l1",type:"text",role:"headline",content:"여름맞이 최대 50% 할인",font:"Noto Sans KR",size:48,weight:800,ls:-.02,lh:1.25,color:"#FFFFFF",align:"center",visible:true,zIndex:1},
-    {id:"l2",type:"text",role:"subheadline",content:"LG 베스트샵 전 제품",font:"Noto Sans KR",size:24,weight:500,ls:0,lh:1.4,color:"#CCCCCC",align:"center",visible:true,zIndex:2},
-    {id:"l3",type:"text",role:"cta",content:"자세히 보기",font:"Noto Sans KR",size:20,weight:700,ls:.02,lh:1,color:"#FFFFFF",align:"center",visible:true,bg:"#A50034",zIndex:3},
+    {id:"img1",type:"image",label:"메인 비주얼",name:"메인 비주얼",src:null,imgW:0,imgH:0,visible:true,zIndex:0},
+    {id:"l1",type:"text",name:"메인 카피",role:"headline",content:"여름맞이 최대 50% 할인",font:"Noto Sans KR",size:48,weight:800,ls:-.02,lh:1.25,color:"#FFFFFF",align:"center",visible:true,zIndex:1},
+    {id:"l2",type:"text",name:"보조 카피",role:"subheadline",content:"LG 베스트샵 전 제품",font:"Noto Sans KR",size:24,weight:500,ls:0,lh:1.4,color:"#CCCCCC",align:"center",visible:true,zIndex:2},
+    {id:"l3",type:"text",name:"CTA 버튼",role:"cta",content:"자세히 보기",font:"Noto Sans KR",size:20,weight:700,ls:.02,lh:1,color:"#FFFFFF",align:"center",visible:true,bg:"#A50034",zIndex:3},
   ]);var layers=_layers[0],setLayers=_layers[1];
   
   var _ov=useState({});var overrides=_ov[0],setOverrides=_ov[1];
@@ -173,6 +195,8 @@ export default function App(){
   var _selEls=useState([]);var selectedEls=_selEls[0],setSelectedEls=_selEls[1];
   var _ae=useState(null);var activeEl=_ae[0],setActiveEl=_ae[1];
   var _editing=useState(null);var editingTextId=_editing[0],setEditingTextId=_editing[1];
+  var _eln=useState(null);var editingLayerNameId=_eln[0],setEditingLayerNameId=_eln[1];
+  var _lnd=useState("");var layerNameDraft=_lnd[0],setLayerNameDraft=_lnd[1];
   var _ec=useState({});var exportChecked=_ec[0],setExportChecked=_ec[1];
   var _tk=useState(0);var setTick=_tk[1];
 
@@ -307,6 +331,14 @@ export default function App(){
     setActiveEl(null);
     setSelectedEls([]);
   }
+  function commitLayerNameEdit(lid){
+    if(!lid) return;
+    var nextName = layerNameDraft.trim();
+    var baseLayer = layers.find(function(layer){return layer.id===lid});
+    var fallback = getLayerDisplayName(baseLayer);
+    updateLayer(lid,"name",nextName || fallback);
+    setEditingLayerNameId(null);
+  }
   function commitEditingText(sid,lid,clearSelection){
     if(!sid || !lid) return;
     var nextText = editingDraftRef.current.replace(/\r/g,"");
@@ -382,23 +414,17 @@ export default function App(){
     var sz = allSizes.find(function(s){return s.id===sid});
     if(!sz) return;
     var er = getElRect(sid, layer);
-    var c = document.createElement("canvas");
-    var ctx = c.getContext("2d");
-    ctx.font = layer.weight+" "+er.fs+'px "'+layer.font+'","Noto Sans KR",sans-serif';
     var nextW = er.w, nextH = er.h;
     if(layer.role==="cta" && layer.bg){
-      var met = ctx.measureText(layer.content || "");
+      var ctaMeasure = measureTextBlock(String(layer.content || ""), er.fs, layer.font, layer.weight, 1, null);
       var pH = er.fs * 0.3;
       var pV = er.fs * 0.2;
-      nextW = ((met.width + pH * 2) / sz.w) * 100;
-      nextH = ((er.fs + pV * 2) / sz.h) * 100;
+      nextW = ((ctaMeasure.width + pH * 2) / sz.w) * 100;
+      nextH = ((ctaMeasure.height + pV * 2) / sz.h) * 100;
     } else {
-      var lines = String(layer.content || "").split("\n");
-      var widest = lines.reduce(function(max,line){
-        return Math.max(max, ctx.measureText(line || " ").width);
-      }, 0);
-      nextW = (widest / sz.w) * 100;
-      nextH = ((Math.max(lines.length,1) * er.fs * layer.lh) / sz.h) * 100;
+      var textMeasure = measureTextBlock(String(layer.content || ""), er.fs, layer.font, layer.weight, layer.lh, null);
+      nextW = (textMeasure.width / sz.w) * 100;
+      nextH = (textMeasure.height / sz.h) * 100;
     }
     nextW = clamp(nextW, 2, 200);
     nextH = clamp(nextH, 2, 200);
@@ -445,18 +471,13 @@ export default function App(){
     var rh=(tReg.h/100)*sh/sz.h*100;
     if(layer.type==="text"){
       var textContent = String((editingTextId===layer.id && activeBoard===sid && activeEl===layer.id ? editingDraftRef.current : layer.content) || "");
-      var c = document.createElement("canvas");
-      var ctx = c.getContext("2d");
-      ctx.font = layer.weight+" "+fs+'px "'+layer.font+'","Noto Sans KR",sans-serif';
-      var lines = textContent.split("\n");
-      var widest = lines.reduce(function(max,line){
-        return Math.max(max, ctx.measureText(line || " ").width);
-      }, 0);
-      var intrinsicW = (widest / sz.w) * 100;
-      var intrinsicH = ((Math.max(lines.length,1) * fs * layer.lh) / sz.h) * 100;
+      var constrainedWidthPx = ov.w!=null ? (ov.w / 100) * sz.w : null;
+      var measured = measureTextBlock(textContent, fs, layer.font, layer.weight, layer.lh, layer.role==="cta" ? null : constrainedWidthPx);
+      var intrinsicW = (measured.width / sz.w) * 100;
+      var intrinsicH = (measured.height / sz.h) * 100;
       if(layer.role==="cta" && layer.bg){
-        intrinsicW = ((widest + fs * 0.6) / sz.w) * 100;
-        intrinsicH = ((fs + fs * 0.4) / sz.h) * 100;
+        intrinsicW = ((measured.width + fs * 0.6) / sz.w) * 100;
+        intrinsicH = ((measured.height + fs * 0.4) / sz.h) * 100;
       }
       var defaultW = clamp(intrinsicW, 2, 200);
       var defaultH = clamp(intrinsicH, 2, 200);
@@ -816,7 +837,7 @@ export default function App(){
         ctx.drawImage(imgObjRef.current, cx - finalW/2, cy - finalH/2, finalW, finalH);
         ctx.restore();
       }else{
-        ctx.fillStyle="rgba(255,255,255,0.03)";ctx.fillRect(dx,dy,dw,dh);ctx.strokeStyle="rgba(255,255,255,0.15)";ctx.setLineDash([5,5]);ctx.lineWidth=2;ctx.strokeRect(dx,dy,dw,dh);ctx.setLineDash([]);ctx.fillStyle="rgba(255,255,255,0.3)";var pFs = Math.max(12,dh*0.08);ctx.font="600 "+pFs+'px "Noto Sans KR"';ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText("🖼 640×640",dx+dw/2,dy+dh/2 - pFs*0.7);ctx.font="600 "+(pFs*0.8)+'px "Noto Sans KR"';ctx.fillText("이미지 영역",dx+dw/2,dy+dh/2 + pFs*0.7)
+        ctx.fillStyle="rgba(255,255,255,0.03)";ctx.fillRect(dx,dy,dw,dh);ctx.strokeStyle="rgba(255,255,255,0.15)";ctx.setLineDash([5,5]);ctx.lineWidth=2;ctx.strokeRect(dx,dy,dw,dh);ctx.setLineDash([])
       }
     }else if(layer.type==="text"){
       var fs=er.fs;if(fs<=0)return;ctx.font=layer.weight+" "+fs+'px "'+layer.font+'","Noto Sans KR",sans-serif';var tx,ty=dy+dh/2;if(layer.align==="center"){ctx.textAlign="center";tx=dx+dw/2}else if(layer.align==="right"){ctx.textAlign="right";tx=dx+dw}else{ctx.textAlign="left";tx=dx}if(layer.role==="cta"&&layer.bg){var met=ctx.measureText(layer.content);var pH=fs*0.3,pV=fs*0.2;var bw=met.width+pH*2,bh=fs+pV*2;var bx=tx-bw/2,by=ty-bh/2;if(layer.align==="left")bx=tx;if(layer.align==="right")bx=tx-bw;ctx.fillStyle=layer.bg;ctx.beginPath();var rd=Math.min(fs*.2,bh/3);ctx.moveTo(bx+rd,by);ctx.lineTo(bx+bw-rd,by);ctx.quadraticCurveTo(bx+bw,by,bx+bw,by+rd);ctx.lineTo(bx+bw,by+bh-rd);ctx.quadraticCurveTo(bx+bw,by+bh,bx+bw-rd,by+bh);ctx.lineTo(bx+rd,by+bh);ctx.quadraticCurveTo(bx,by+bh,bx,by+bh-rd);ctx.lineTo(bx,by+rd);ctx.quadraticCurveTo(bx,by,bx+rd,by);ctx.closePath();ctx.fill();ctx.textBaseline="middle";ctx.fillStyle=layer.color;ctx.fillText(layer.content,tx,ty);}else{ctx.textBaseline="top";ctx.fillStyle=layer.color;var lines=layer.content.split("\n");var lineH=fs*layer.lh;var startY=dy;for(var li=0;li<lines.length;li++){ctx.fillText(lines[li],tx,startY+(li*lineH));}}}});return new Promise(function(resolve){c.toBlob(function(blob){var url=URL.createObjectURL(blob);var a=document.createElement("a");a.href=url;a.download="App_"+sz.w+"x"+sz.h+"_"+sz.label.replace(/[\s/:]+/g,"_")+".png";document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);resolve()},"image/png")})})}
@@ -840,7 +861,7 @@ export default function App(){
         layers.map(function(baseLayer){
           var layer = getLayerForBoard(sz.id, baseLayer);
           if(!layer.visible || layer.hidden) return null;
-          var er=getElRect(sz.id,layer);var isSel=isAct&&selectedEls.indexOf(layer.id)!==-1;
+          var er=getElRect(sz.id,layer);var isSel=isAct&&selectedEls.indexOf(layer.id)!==-1;var labelFontSize=3;
           
           if(layer.type==="image"){
             var imgS = getOv(sz.id, layer.id).imgS ?? 1;
@@ -857,9 +878,9 @@ export default function App(){
                               null
                             ),
                 isSel&&React.createElement(React.Fragment,null,
-                  React.createElement("div",{onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")},style:{position:"absolute",inset:-1,cursor:spaceHeld?"grab":"move",background:"transparent"}}),
+                  React.createElement("div",{onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")},style:{position:"absolute",inset:-6,cursor:spaceHeld?"grab":"move",background:"transparent"}}),
                   renderResizeHandles(sz.id,layer.id,beginDrag,fitLayerToContent),
-                  React.createElement("div",{style:{position:"absolute",top:-12,left:0,fontSize:8,color:"rgba(237,242,247,.72)",lineHeight:1,pointerEvents:"none",whiteSpace:"nowrap"}},getLayerDisplayName(layer)),
+                  React.createElement("div",{style:{position:"absolute",top:-8,left:0,fontSize:labelFontSize,color:MD.primary,lineHeight:1,pointerEvents:"none",whiteSpace:"nowrap",fontWeight:700,letterSpacing:".02em"}},getLayerDisplayName(layer)),
                   React.createElement("div",{onMouseDown:function(e){if(e.button!==0)return; e.stopPropagation();e.preventDefault();saveHistory();setOverrides(function(prev){var n=Object.assign({},prev);if(n[sz.id]){var b=Object.assign({},n[sz.id]);delete b[layer.id];n[sz.id]=b}return n})},style:Object.assign({},hSt,{top:-1.5,left:-1.5,cursor:"pointer",background:"#ff5a5a",fontSize:5.5,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",width:8,height:8,borderRadius:999,border:"0.5px solid #fff"})},"↺")
                 )
               )
@@ -870,8 +891,8 @@ export default function App(){
           return React.createElement("div",{key:layer.id,
             style:{position:"absolute",left:er.x+"%",top:er.y+"%",width:er.w+"%",height:er.h+"%",display:"flex",alignItems:isCta?"center":"flex-start",justifyContent:layer.align==="center"?"center":layer.align==="right"?"flex-end":"flex-start",zIndex:isSel?15:layer.zIndex+2,userSelect:"none",pointerEvents:"none",overflow:"visible"}},
             React.createElement("div",{id: "layer-"+sz.id+"-"+layer.id, onClick:function(e){e.stopPropagation();activateLayerSelection(sz.id,layer.id,[layer.id]);}, onMouseDown:function(e){if(isEditingText && !isCta) return; if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")}, onContextMenu:function(e){handleContextMenuLayer(e, sz.id, layer.id)}, style:{position:"relative",display:"flex",width:"100%",height:"100%",maxWidth:"100%",maxHeight:"100%",border:isSel?"0.5px solid rgba(124,196,255,.92)":"0.5px solid transparent", pointerEvents:"auto", cursor:spaceHeld?"grab":"move", fontFamily:'"'+layer.font+'","Noto Sans KR",sans-serif',fontSize:dfs,fontWeight:layer.weight,letterSpacing:layer.ls+"em",lineHeight:layer.lh,color:layer.color,textAlign:layer.align,alignItems:isCta?"center":"flex-start",justifyContent:layer.align==="center"?"center":layer.align==="right"?"flex-end":"flex-start",boxSizing:"border-box",overflow:"visible"}},
-              isSel && !isEditingText && React.createElement("div",{onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")},style:{position:"absolute",inset:-1,cursor:spaceHeld?"grab":"move",background:"transparent"}}),
-              isSel&&React.createElement("div",{style:{position:"absolute",top:-12,left:0,fontSize:8,color:"rgba(237,242,247,.72)",lineHeight:1,pointerEvents:"none",whiteSpace:"nowrap"}},getLayerDisplayName(layer)),
+              isSel && !isEditingText && React.createElement("div",{onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")},style:{position:"absolute",inset:-6,cursor:spaceHeld?"grab":"move",background:"transparent"}}),
+              isSel&&React.createElement("div",{style:{position:"absolute",top:-8,left:0,fontSize:labelFontSize,color:MD.primary,lineHeight:1,pointerEvents:"none",whiteSpace:"nowrap",fontWeight:700,letterSpacing:".02em"}},getLayerDisplayName(layer)),
               isEditingText && !isCta
                 ?React.createElement("div",{ref:editingRef,id:"layer-content-"+sz.id+"-"+layer.id,contentEditable:true,suppressContentEditableWarning:true,onClick:function(e){e.stopPropagation();},onMouseDown:function(e){e.stopPropagation();},onCompositionStart:function(){isComposingRef.current=true;},onCompositionEnd:function(e){isComposingRef.current=false;editingDraftRef.current=e.currentTarget.innerText;},onInput:function(e){editingDraftRef.current=e.currentTarget.innerText;},onBlur:function(){if(isComposingRef.current) return; commitEditingText(sz.id,layer.id,false);},onKeyDown:function(e){if(e.key==="Escape"){e.preventDefault();commitEditingText(sz.id,layer.id,true);e.currentTarget.blur();}},style:{minWidth:"100%",minHeight:"100%",whiteSpace:"pre-wrap",wordBreak:"keep-all",display:"block",width:"100%",background:"transparent",outline:"none",overflow:"visible",cursor:"text"}})
                 :isCta&&layer.bg
@@ -896,8 +917,8 @@ export default function App(){
       React.createElement("div",{style:{fontSize:9,fontFamily:"'JetBrains Mono',monospace",textAlign:"center",lineHeight:1.2}},
         React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,justifyContent:"center",flexWrap:"wrap"}},
           React.createElement("span",{style:{color:isAct?"#00d4ff":"#aaa",fontWeight:600}},sz.w+"×"+sz.h),
-          mutated&&React.createElement("span",{style:{color:"#ff5a5a",fontSize:8,fontWeight:700}},"(변형됨)"),
-          mutated&&React.createElement("button",{onClick:function(e){e.stopPropagation();saveHistory();resetBoardState(sz.id);},style:{padding:"1px 6px",border:"1px solid #552222",borderRadius:999,fontSize:8,background:"transparent",color:"#ff7a7a",cursor:"pointer",fontFamily:"inherit"}},"초기화")
+          mutated&&React.createElement("span",{style:{display:"inline-flex",alignItems:"center",padding:"1px 4px",borderRadius:999,fontSize:6.5,fontWeight:700,letterSpacing:".02em",background:MD.dangerSoft,color:MD.danger,border:"1px solid rgba(255,123,114,.24)"}},"변형됨"),
+          mutated&&React.createElement("button",{onClick:function(e){e.stopPropagation();saveHistory();resetBoardState(sz.id);},style:{padding:"1px 5px",border:"1px solid rgba(124,196,255,.2)",borderRadius:999,fontSize:6.5,background:"rgba(124,196,255,.08)",color:MD.primary,cursor:"pointer",fontFamily:"inherit",fontWeight:700,lineHeight:1.3}},"초기화")
         ),
         React.createElement("div",{style:{fontSize:8,color:"#555"}},sz.label)
       )
@@ -947,7 +968,7 @@ export default function App(){
       React.createElement("div",{style:{width:260,background:MD.surface,borderRight:"1px solid "+MD.line,overflowY:"auto",flexShrink:0,boxShadow:"inset -1px 0 0 rgba(255,255,255,.03)"}},
         React.createElement("div",{style:{padding:10,borderBottom:"1px solid #1a1a1a"}},
           React.createElement("div",{style:sT},"🗂 레이어"),
-          layers.map(function(l){var boardLayer = activeBoard ? getLayerForBoard(activeBoard, l) : l; var isImg=l.type==="image";var label=isImg?l.label:(ROLES.find(function(r){return r.key===l.role})||{}).label||l.role;var sub=isImg?(boardLayer.src?boardLayer.imgW+"×"+boardLayer.imgH+" PNG":"이미지 없음"):boardLayer.content;
+          layers.map(function(l){var boardLayer = activeBoard ? getLayerForBoard(activeBoard, l) : l; var isImg=l.type==="image";var roleLabel=isImg?"IMAGE":(ROLES.find(function(r){return r.key===l.role})||{}).label||l.role;var layerName=getLayerDisplayName(boardLayer);var sub=isImg?(boardLayer.src?boardLayer.imgW+"×"+boardLayer.imgH+" PNG":"이미지 없음"):boardLayer.content;
             var isSelected = selectedEls.indexOf(l.id) !== -1;
             var layerHidden = activeBoard ? !!boardLayer.hidden : !boardLayer.visible;
             return React.createElement("div",{key:l.id,onClick:function(e){
@@ -960,13 +981,19 @@ export default function App(){
               },style:{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",borderRadius:14,cursor:"pointer",marginBottom:4,background:isSelected?MD.primarySoft:MD.surface2,border:isSelected?"1px solid rgba(26,115,232,.18)":"1px solid transparent",opacity:layerHidden?0.55:1}},
               React.createElement("input",{type:"checkbox",checked:!layerHidden,onChange:function(e){e.stopPropagation();saveHistory(); if(activeBoard) setOv(activeBoard,l.id,{hidden:layerHidden?false:true}); else updateLayer(l.id,"visible",!l.visible)},style:{accentColor:MD.primary}}),
               React.createElement("div",{style:{width:18,height:18,borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,flexShrink:0,background:isImg?"#e8f5e9":"#eef3f8",border:"1px solid "+MD.line,color:isImg?"#2e7d32":(boardLayer.color||MD.muted)}},isImg?"🖼":"T"),
-              React.createElement("div",{style:{flex:1,minWidth:0}},React.createElement("div",{style:{fontSize:10,color:MD.muted,textTransform:"uppercase",letterSpacing:".04em"}},label),React.createElement("div",{style:{fontSize:12,color:MD.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},sub))
+              React.createElement("div",{style:{flex:1,minWidth:0}},
+                React.createElement("div",{style:{fontSize:10,color:MD.muted,textTransform:"uppercase",letterSpacing:".04em"}},roleLabel),
+                editingLayerNameId===l.id
+                  ?React.createElement("input",{autoFocus:true,value:layerNameDraft,onChange:function(e){setLayerNameDraft(e.target.value);},onBlur:function(){commitLayerNameEdit(l.id);},onKeyDown:function(e){if(e.key==="Enter"||e.key==="Escape"){e.preventDefault();e.stopPropagation();commitLayerNameEdit(l.id);}},style:{width:"100%",padding:0,border:"none",outline:"none",background:"transparent",color:MD.text,fontSize:12,fontWeight:700,fontFamily:"inherit"}})
+                  :React.createElement("div",{onDoubleClick:function(e){e.stopPropagation();setEditingLayerNameId(l.id);setLayerNameDraft(layerName);},style:{fontSize:12,color:MD.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontWeight:700}},layerName),
+                React.createElement("div",{style:{fontSize:10,color:MD.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},sub)
+              )
             )}),
           React.createElement("div",{onClick:function(){fileRef.current&&fileRef.current.click()},onDrop:function(e){e.preventDefault();handleFile(e.dataTransfer.files&&e.dataTransfer.files[0])},onDragOver:function(e){e.preventDefault()},style:{marginTop:4,border:"1px dashed #333",borderRadius:4,padding:imgLayer&&imgLayer.src?4:12,cursor:"pointer",textAlign:"center",background:"#0a0a0a",overflow:"hidden"}},
-            imgLayer&&imgLayer.src?React.createElement("div",{style:{position:"relative"}},React.createElement("img",{src:imgLayer.src,alt:"",style:{width:"100%",maxHeight:80,objectFit:"contain",display:"block",background:"repeating-conic-gradient(#1a1a1a 0% 25%, #151515 0% 50%) 0 0 / 8px 8px"}}),React.createElement("button",{onClick:function(e){e.stopPropagation();saveHistory();updateLayer(imgLayer.id,"src",null);imgObjRef.current=null},style:{position:"absolute",top:2,right:2,background:"rgba(0,0,0,.7)",border:"none",color:"#f44",cursor:"pointer",borderRadius:2,padding:"0 3px",fontSize:9}},"✕")):React.createElement("div",null,React.createElement("div",{style:{fontSize:14}},"📁"),React.createElement("div",{style:{color:"#444",fontSize:9}},"PNG 업로드"))
+            imgLayer&&imgLayer.src?React.createElement("div",{style:{position:"relative"}},React.createElement("img",{src:imgLayer.src,alt:"",style:{width:"100%",maxHeight:80,objectFit:"contain",display:"block",background:"transparent"}}),React.createElement("button",{onClick:function(e){e.stopPropagation();saveHistory();updateLayer(imgLayer.id,"src",null);imgObjRef.current=null},style:{position:"absolute",top:2,right:2,background:"rgba(0,0,0,.7)",border:"none",color:"#f44",cursor:"pointer",borderRadius:2,padding:"0 3px",fontSize:9}},"✕")):React.createElement("div",null,React.createElement("div",{style:{fontSize:14}},"📁"),React.createElement("div",{style:{color:"#444",fontSize:9}},"PNG 업로드"))
           ),
           React.createElement("input",{ref:fileRef,type:"file",accept:"image/png",onChange:function(e){handleFile(e.target.files&&e.target.files[0])},style:{display:"none"}}),
-          React.createElement("button",{onClick:function(){saveHistory();var id="l"+Date.now();setLayers(function(p){return p.concat([{id:id,type:"text",role:"headline",content:"새 텍스트",font:"Noto Sans KR",size:24,weight:700,ls:0,lh:1.4,color:"#FFFFFF",align:"center",visible:true,zIndex:p.length}])}); if(activeBoard){setOverrides(function(prev){var next=Object.assign({},prev);allSizes.forEach(function(sz){if(sz.id!==activeBoard){var board=Object.assign({},next[sz.id]||{});board[id]=Object.assign({},board[id]||{},{hidden:true});next[sz.id]=board;}});return next;});} setActiveEl(id);setSelectedEls([id]);},style:{width:"100%",padding:"10px 12px",border:"1px dashed "+MD.line,borderRadius:14,background:MD.surface,color:MD.muted,cursor:"pointer",fontSize:11,fontWeight:600,fontFamily:"inherit",marginTop:8}},"+ 텍스트 레이어 추가")
+          React.createElement("button",{onClick:function(){saveHistory();var id="l"+Date.now();setLayers(function(p){return p.concat([{id:id,type:"text",name:"새 텍스트 레이어",role:"headline",content:"새 텍스트",font:"Noto Sans KR",size:24,weight:700,ls:0,lh:1.4,color:"#FFFFFF",align:"center",visible:true,zIndex:p.length}])}); if(activeBoard){setOverrides(function(prev){var next=Object.assign({},prev);allSizes.forEach(function(sz){if(sz.id!==activeBoard){var board=Object.assign({},next[sz.id]||{});board[id]=Object.assign({},board[id]||{},{hidden:true});next[sz.id]=board;}});return next;});} setActiveEl(id);setSelectedEls([id]);},style:{width:"100%",padding:"10px 12px",border:"1px dashed "+MD.line,borderRadius:14,background:MD.surface,color:MD.muted,cursor:"pointer",fontSize:11,fontWeight:600,fontFamily:"inherit",marginTop:8}},"+ 텍스트 레이어 추가")
         ),
         React.createElement("div",{style:{padding:10,borderBottom:"1px solid #1a1a1a"}},
           React.createElement("div",{style:sT},"🎨 캔버스 배경"),
