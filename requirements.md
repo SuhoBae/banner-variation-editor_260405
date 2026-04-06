@@ -19,3 +19,12 @@
   - 이미지 레이어는 사이즈 조절 시 비율을 무조건 1:1로 강제 유지한다.
 - **50단계 History (Undo/Redo)**:
   - `Ctrl+Z`, `Ctrl+Shift+Z` 지원. 상태가 변경되기 직전의 `layers`, `overrides`, `bgColor`, `boardDefaults`를 스냅샷으로 저장한다.
+## Modular Implementation Guideline (2026-04-06)
+- Feature-based modularization is now a project requirement.
+- Minimum split direction:
+  - `src/adcanvas/config.js`: constants, presets, design tokens
+  - `src/adcanvas/utils.js`: measurement, layout, parsing, shared math
+  - `src/adcanvas/components/*`: reusable panel and control UI
+  - `App.jsx`: state orchestration, board composition, high-level workflow only
+- New feature work should first decide whether it belongs to config, utils, components, or orchestration.
+- Repeated logic across two or more UI surfaces must be extracted before adding more behavior.
