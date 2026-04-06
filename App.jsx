@@ -211,6 +211,7 @@ export default function App(){
   var _selEls=useState([]);var selectedEls=_selEls[0],setSelectedEls=_selEls[1];
   var _ae=useState(null);var activeEl=_ae[0],setActiveEl=_ae[1];
   var _editing=useState(null);var editingTextId=_editing[0],setEditingTextId=_editing[1];
+  var _edv=useState("");var editingDraftValue=_edv[0],setEditingDraftValue=_edv[1];
   var _eln=useState(null);var editingLayerNameId=_eln[0],setEditingLayerNameId=_eln[1];
   var _lnd=useState("");var layerNameDraft=_lnd[0],setLayerNameDraft=_lnd[1];
   var _ec=useState({});var exportChecked=_ec[0],setExportChecked=_ec[1];
@@ -222,17 +223,11 @@ export default function App(){
     var currentLayer = activeBoard && baseLayer ? getLayerForBoard(activeBoard, baseLayer) : baseLayer;
     var nextText = currentLayer && currentLayer.content != null ? String(currentLayer.content) : "";
     editingDraftRef.current = nextText;
-    editingRef.current.textContent = nextText;
+    setEditingDraftValue(nextText);
+    editingRef.current.value = nextText;
     var el = editingRef.current;
     el.focus();
-    var range = document.createRange();
-    range.selectNodeContents(el);
-    range.collapse(false);
-    var sel = window.getSelection();
-    if(sel){
-      sel.removeAllRanges();
-      sel.addRange(range);
-    }
+    el.setSelectionRange(nextText.length,nextText.length);
   }, [editingTextId, activeBoard, activeEl, layers, overrides, boardDefaults]);
 
   useEffect(function(){
@@ -365,6 +360,7 @@ export default function App(){
     var nextText = editingDraftRef.current.replace(/\r/g,"");
     setBoardLayerProp(sid,lid,"content",nextText);
     setEditingTextId(null);
+    setEditingDraftValue("");
     if(clearSelection) clearLayerSelection();
   }
   function clearBoardLayerOverride(sid,lid){
@@ -492,7 +488,7 @@ export default function App(){
     var rh=(tReg.h/100)*sh/sz.h*100;
     if(layer.type==="text"){
       var isEditingActive = editingTextId===layer.id && activeBoard===sid && activeEl===layer.id;
-      var textContent = String((isEditingActive ? editingDraftRef.current : layer.content) || "");
+      var textContent = String((isEditingActive ? editingDraftValue : layer.content) || "");
       var manualBox = hasManualBoxOverride(sid,layer.id);
       var constrainedWidthPx = !isEditingActive && manualBox && ov.w!=null ? (ov.w / 100) * sz.w : null;
       var measured = measureTextBlock(textContent, fs, layer.font, layer.weight, layer.lh, layer.role==="cta" ? null : constrainedWidthPx);
@@ -918,7 +914,7 @@ export default function App(){
               isSel && !isEditingText && React.createElement("div",{onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")},style:{position:"absolute",inset:-6,cursor:spaceHeld?"grab":"move",background:"transparent"}}),
               isSel&&React.createElement("div",{onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")},style:{position:"absolute",top:-8,left:0,fontSize:labelFontSize,color:MD.primary,lineHeight:1,pointerEvents:"auto",whiteSpace:"nowrap",fontWeight:700,letterSpacing:".02em",cursor:spaceHeld?"grab":"move"}},getLayerDisplayName(layer)),
               isEditingText && !isCta
-                ?React.createElement("div",{ref:editingRef,id:"layer-content-"+sz.id+"-"+layer.id,contentEditable:true,suppressContentEditableWarning:true,onClick:function(e){e.stopPropagation();},onMouseDown:function(e){e.stopPropagation();},onCompositionStart:function(){isComposingRef.current=true;},onCompositionEnd:function(e){isComposingRef.current=false;editingDraftRef.current=readEditableText(e.currentTarget);requestAnimationFrame(function(){setTick(function(c){return c+1});});},onInput:function(e){editingDraftRef.current=readEditableText(e.currentTarget);requestAnimationFrame(function(){setTick(function(c){return c+1});});},onBlur:function(){if(isComposingRef.current) return; commitEditingText(sz.id,layer.id,false);},onKeyDown:function(e){if(e.key==="Escape"){e.preventDefault();commitEditingText(sz.id,layer.id,true);e.currentTarget.blur();return;} if(e.key==="Enter"){requestAnimationFrame(function(){editingDraftRef.current=readEditableText(e.currentTarget);setTick(function(c){return c+1});});}},style:{minWidth:"100%",minHeight:"100%",whiteSpace:"pre-wrap",wordBreak:"keep-all",display:"block",width:"100%",background:"transparent",outline:"none",overflow:"visible",cursor:"text"}})
+                ?React.createElement("textarea",{ref:editingRef,id:"layer-content-"+sz.id+"-"+layer.id,value:editingDraftValue,spellCheck:false,onClick:function(e){e.stopPropagation();},onMouseDown:function(e){e.stopPropagation();},onCompositionStart:function(){isComposingRef.current=true;},onCompositionEnd:function(){isComposingRef.current=false;requestAnimationFrame(function(){setTick(function(c){return c+1});});},onChange:function(e){editingDraftRef.current=e.target.value;setEditingDraftValue(e.target.value);},onBlur:function(){if(isComposingRef.current) return; commitEditingText(sz.id,layer.id,false);},onKeyDown:function(e){if(e.key==="Escape"){e.preventDefault();commitEditingText(sz.id,layer.id,true);e.currentTarget.blur();}},style:{minWidth:"100%",minHeight:"100%",whiteSpace:"pre-wrap",wordBreak:"keep-all",display:"block",width:"100%",height:"100%",padding:0,margin:0,border:"none",background:"transparent",outline:"none",overflow:"hidden",resize:"none",cursor:"text",color:"inherit",font:"inherit",letterSpacing:"inherit",lineHeight:"inherit",textAlign:layer.align}}) 
                 :isCta&&layer.bg
                   ?React.createElement("span",{id:"layer-content-"+sz.id+"-"+layer.id,style:{background:layer.bg,padding:(dfs*0.2)+"px "+(dfs*0.3)+"px",borderRadius:999,whiteSpace:"nowrap",display:"inline-flex",alignItems:"center",justifyContent:"center",lineHeight:1,boxShadow:"0 1px 3px rgba(0,0,0,.12)"}} ,layer.content)
                   :React.createElement("span",{id:"layer-content-"+sz.id+"-"+layer.id,style:{whiteSpace:"pre-wrap",wordBreak:"keep-all",display:"block",width:"100%",overflow:"visible"}},layer.content),
