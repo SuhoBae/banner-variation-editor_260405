@@ -264,3 +264,9 @@ Resolution: Replaced the single decimal ratio input with two numeric fields repr
 [2026-04-06] 텍스트/CTA 리사이즈 기준 단순화
 상황: 텍스트 레이어에 수동 높이 조절이 남아 있으면 Enter 줄바꿈, 정렬, 편집 박스 높이 계산이 계속 충돌했음.
 해결: 텍스트 계열은 상하 높이 핸들을 제거하고 `좌우 폭 조절 + 우하단 비율 스케일 + 자동 높이` 규칙으로 통일함. 속성 패널에서도 높이는 고정값이 아니라 자동값으로 읽기 전용 표시하도록 조정함.
+
+[2026-04-07] Header Rename, CTA Inline Editing, and Selector Alignment
+
+Situation: The service still surfaced the older `AdCanvas` title, CTA button layers could not be edited directly on the artboard, and multiline text editing could still leave the selector box one line short when the draft ended with a trailing line break. The user also wanted vertical resize handles back and requested a transform mark before each layer name.
+
+Resolution: Renamed the header to `Banner Variation Editor` and removed the subtitle. Introduced a trailing-newline-safe text measurement helper so selector height follows the bottom blank line while editing. Allowed inline editing for all text layers including CTA, rendered CTA display/edit states against the same pill-sized box, restored vertical resize handles, and added transform badges before layer names in both the canvas labels and the layer list. Selector width and height overrides are now only respected when `manualBox` is active so stale bounds do not leak into text or CTA layers.

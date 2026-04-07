@@ -1,6 +1,30 @@
 import React from "react";
 import { MD, sT } from "../config.js";
 
+function TransformBadge() {
+  return React.createElement(
+    "span",
+    {
+      style: {
+        width: 12,
+        height: 12,
+        borderRadius: 4,
+        border: "0.5px solid rgba(255,255,255,.8)",
+        background: "rgba(124,196,255,.16)",
+        color: MD.primary,
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: 9,
+        fontWeight: 900,
+        lineHeight: 1,
+        flexShrink: 0,
+      },
+    },
+    "+"
+  );
+}
+
 export default function LayerListPanel(props) {
   var isDisabled = !!props.isDisabled;
 
@@ -15,7 +39,7 @@ export default function LayerListPanel(props) {
         transition: "opacity .16s ease, filter .16s ease",
       },
     },
-    React.createElement("div", { style: sT }, "레이어"),
+    React.createElement("div", { style: sT }, "Layers"),
     isDisabled &&
       React.createElement(
         "div",
@@ -31,7 +55,7 @@ export default function LayerListPanel(props) {
             lineHeight: 1.5,
           },
         },
-        "아트보드를 먼저 선택하면 레이어 제어가 활성화됩니다."
+        "Select an artboard first to enable layer controls."
       ),
     props.layers.map(function (layer) {
       var boardLayer = props.activeBoard ? props.getLayerForBoard(props.activeBoard, layer) : layer;
@@ -39,7 +63,9 @@ export default function LayerListPanel(props) {
       var roleLabel = isImage ? "image" : "text";
       var layerName = props.getLayerDisplayName(boardLayer);
       var subLabel = isImage
-        ? (boardLayer.src ? boardLayer.imgW + "×" + boardLayer.imgH + " PNG" : "이미지 없음")
+        ? boardLayer.src
+          ? boardLayer.imgW + "x" + boardLayer.imgH + " PNG"
+          : "No image"
         : boardLayer.content;
       var isSelected = !isDisabled && props.selectedEls.indexOf(layer.id) !== -1;
       var layerHidden = props.activeBoard ? !!boardLayer.hidden : !boardLayer.visible;
@@ -90,7 +116,7 @@ export default function LayerListPanel(props) {
               flexShrink: 0,
               background: isImage ? "#e8f5e9" : "#eef3f8",
               border: "1px solid " + MD.line,
-              color: isImage ? "#2e7d32" : (boardLayer.color || MD.muted),
+              color: isImage ? "#2e7d32" : boardLayer.color || MD.muted,
             },
           },
           isImage ? "I" : "T"
@@ -98,57 +124,88 @@ export default function LayerListPanel(props) {
         React.createElement(
           "div",
           { style: { flex: 1, minWidth: 0 } },
-          React.createElement("div", { style: { fontSize: 10, color: MD.muted, textTransform: "uppercase", letterSpacing: ".04em" } }, roleLabel),
-          props.editingLayerNameId === layer.id && !isDisabled
-            ? React.createElement("input", {
-                autoFocus: true,
-                value: props.layerNameDraft,
-                onChange: function (event) {
-                  props.setLayerNameDraft(event.target.value);
-                },
-                onBlur: function () {
-                  props.commitLayerNameEdit(layer.id);
-                },
-                onKeyDown: function (event) {
-                  if (event.key === "Enter" || event.key === "Escape") {
-                    event.preventDefault();
-                    event.stopPropagation();
+          React.createElement(
+            "div",
+            {
+              style: {
+                fontSize: 10,
+                color: MD.muted,
+                textTransform: "uppercase",
+                letterSpacing: ".04em",
+              },
+            },
+            roleLabel
+          ),
+          React.createElement(
+            "div",
+            { style: { display: "flex", alignItems: "center", gap: 6, minWidth: 0 } },
+            React.createElement(TransformBadge, null),
+            props.editingLayerNameId === layer.id && !isDisabled
+              ? React.createElement("input", {
+                  autoFocus: true,
+                  value: props.layerNameDraft,
+                  onChange: function (event) {
+                    props.setLayerNameDraft(event.target.value);
+                  },
+                  onBlur: function () {
                     props.commitLayerNameEdit(layer.id);
-                  }
-                },
-                style: {
-                  width: "100%",
-                  padding: 0,
-                  border: "none",
-                  outline: "none",
-                  background: "transparent",
-                  color: MD.text,
-                  fontSize: 12,
-                  fontWeight: 700,
-                  fontFamily: "inherit",
-                },
-              })
-            : React.createElement(
-                "div",
-                {
-                  onDoubleClick: function (event) {
-                    event.stopPropagation();
-                    if (isDisabled) return;
-                    props.setEditingLayerNameId(layer.id);
-                    props.setLayerNameDraft(layerName);
+                  },
+                  onKeyDown: function (event) {
+                    if (event.key === "Enter" || event.key === "Escape") {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      props.commitLayerNameEdit(layer.id);
+                    }
                   },
                   style: {
-                    fontSize: 12,
+                    width: "100%",
+                    minWidth: 0,
+                    padding: 0,
+                    border: "none",
+                    outline: "none",
+                    background: "transparent",
                     color: MD.text,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
+                    fontSize: 12,
                     fontWeight: 700,
+                    fontFamily: "inherit",
                   },
-                },
-                layerName
-              ),
-          React.createElement("div", { style: { fontSize: 10, color: MD.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, subLabel)
+                })
+              : React.createElement(
+                  "div",
+                  {
+                    onDoubleClick: function (event) {
+                      event.stopPropagation();
+                      if (isDisabled) return;
+                      props.setEditingLayerNameId(layer.id);
+                      props.setLayerNameDraft(layerName);
+                    },
+                    style: {
+                      flex: 1,
+                      minWidth: 0,
+                      fontSize: 12,
+                      color: MD.text,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      fontWeight: 700,
+                    },
+                  },
+                  layerName
+                )
+          ),
+          React.createElement(
+            "div",
+            {
+              style: {
+                fontSize: 10,
+                color: MD.muted,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              },
+            },
+            subLabel
+          )
         )
       );
     }),
@@ -185,7 +242,13 @@ export default function LayerListPanel(props) {
             React.createElement("img", {
               src: props.imgLayer.src,
               alt: "",
-              style: { width: "100%", maxHeight: 80, objectFit: "contain", display: "block", background: "transparent" },
+              style: {
+                width: "100%",
+                maxHeight: 80,
+                objectFit: "contain",
+                display: "block",
+                background: "transparent",
+              },
             }),
             React.createElement(
               "button",
@@ -209,14 +272,14 @@ export default function LayerListPanel(props) {
                   fontSize: 9,
                 },
               },
-              "×"
+              "x"
             )
           )
         : React.createElement(
             "div",
             null,
             React.createElement("div", { style: { fontSize: 14 } }, "PNG"),
-            React.createElement("div", { style: { color: "#444", fontSize: 9 } }, "PNG 업로드")
+            React.createElement("div", { style: { color: "#444", fontSize: 9 } }, "Upload PNG")
           )
     ),
     React.createElement("input", {
@@ -251,7 +314,7 @@ export default function LayerListPanel(props) {
           marginTop: 8,
         },
       },
-      "+ 텍스트 레이어 추가"
+      "+ Add text layer"
     )
   );
 }
