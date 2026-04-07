@@ -153,7 +153,7 @@ function getLayerDisplayName(layer){
 }
 
 export default function App(){
-  var fileRef=useRef(null),imgObjRef=useRef(null),dragRef=useRef(null),canvasRef=useRef(null),viewportRef=useRef(null),panRef=useRef(null),lastPointerRef=useRef(null),editingRef=useRef(null),editingDraftRef=useRef(""),isComposingRef=useRef(false);
+  var fileRef=useRef(null),imgObjRef=useRef(null),dragRef=useRef(null),boardSelectRef=useRef(null),canvasRef=useRef(null),viewportRef=useRef(null),panRef=useRef(null),lastPointerRef=useRef(null),editingRef=useRef(null),editingDraftRef=useRef(""),isComposingRef=useRef(false);
   var _bg=useState("#0f0f0f");var bgColor=_bg[0],setBgColor=_bg[1];
   var _z=useState(1);var zoom=_z[0],setZoom=_z[1];
   var _pan=useState({x:0,y:0});var pan=_pan[0],setPan=_pan[1];
@@ -265,6 +265,7 @@ export default function App(){
       customFonts: customFonts,
       boardSizeOverrides: boardSizeOverrides,
       selIds: selIds,
+      selectedBoardIds: selectedBoardIds,
       customSizes: customSizes,
       showSafe: showSafe,
       showGrid: showGrid,
@@ -281,6 +282,7 @@ export default function App(){
     setCustomFonts(snapshot.customFonts || []);
     setBoardSizeOverrides(snapshot.boardSizeOverrides || {});
     setSelIds(snapshot.selIds || []);
+    setSelectedBoardIds(snapshot.selectedBoardIds || []);
     setCustomSizes(snapshot.customSizes || []);
     setShowSafe(!!snapshot.showSafe);
     setShowGrid(!!snapshot.showGrid);
@@ -301,6 +303,7 @@ export default function App(){
   var _scf=useState(false);var showCF=_scf[0],setShowCF=_scf[1];
   
   var _ab=useState(null);var activeBoard=_ab[0],setActiveBoard=_ab[1];
+  var _selBoards=useState([]);var selectedBoardIds=_selBoards[0],setSelectedBoardIds=_selBoards[1];
   var _selEls=useState([]);var selectedEls=_selEls[0],setSelectedEls=_selEls[1];
   var _ae=useState(null);var activeEl=_ae[0],setActiveEl=_ae[1];
   var _editing=useState(null);var editingTextId=_editing[0],setEditingTextId=_editing[1];
@@ -308,6 +311,7 @@ export default function App(){
   var _eln=useState(null);var editingLayerNameId=_eln[0],setEditingLayerNameId=_eln[1];
   var _lnd=useState("");var layerNameDraft=_lnd[0],setLayerNameDraft=_lnd[1];
   var _ec=useState({});var exportChecked=_ec[0],setExportChecked=_ec[1];
+  var _boardSelBox=useState(null);var boardSelectionBox=_boardSelBox[0],setBoardSelectionBox=_boardSelBox[1];
   var _tk=useState(0);var setTick=_tk[1];
 
   useEffect(function(){
@@ -445,6 +449,7 @@ export default function App(){
   function activateLayerSelection(sid,lid,ids){
     var base = layers.find(function(l){return l.id===lid});
     var nextIds = ids || [lid];
+    setSelectedBoardIds(function(prev){ return prev.indexOf(sid)!==-1 ? prev : [sid]; });
     setActiveBoard(sid);
     setSelectedEls(nextIds);
     setActiveEl(lid);
@@ -475,6 +480,69 @@ export default function App(){
     var nextRatioW = Math.round(clamp(+ratioW || 0, 1, 1000));
     var nextRatioH = Math.round(clamp(+ratioH || 0, 1, 1000));
     setBoardSizeProp(sid, "w", Math.round(currentSize.h * (nextRatioW / nextRatioH)));
+  }
+  function clearBoardFocus(){
+    setSelectedBoardIds([]);
+    setActiveBoard(null);
+    setActiveEl(null);
+    setSelectedEls([]);
+    setEditingTextId(null);
+    setCtxMenu(null);
+  }
+  function setBoardSelection(ids, nextActive){
+    var unique = Array.from(new Set((ids || []).filter(Boolean)));
+    setSelectedBoardIds(unique);
+    setActiveBoard(nextActive != null ? nextActive : (unique.length ? unique[unique.length - 1] : null));
+    setActiveEl(null);
+    setSelectedEls([]);
+    setEditingTextId(null);
+    setCtxMenu(null);
+  }
+  function getVisibleSelectedBoardIds(){
+    return selectedBoardIds.filter(function(id){
+      return visSizes.some(function(size){ return size.id===id; });
+    });
+  }
+  function getApplyTargetBoardIds(sourceSid){
+    var visibleIds = visSizes.map(function(size){ return size.id; });
+    var selectedVisibleIds = getVisibleSelectedBoardIds();
+    var baseIds = selectedVisibleIds.length > 1 ? selectedVisibleIds : visibleIds;
+    return baseIds.filter(function(id){ return id !== sourceSid; });
+  }
+  function getLayerApplyButtonLabel(sourceSid){
+    var selectedVisibleIds = getVisibleSelectedBoardIds();
+    var targetCount = getApplyTargetBoardIds(sourceSid).length;
+    if(selectedVisibleIds.length > 1) return "선택 보드 " + targetCount + "개에 적용";
+    return "전체 보드에 적용";
+  }
+  function getReplicableLayerProps(sourceSid, lid){
+    var baseLayer = layers.find(function(layer){ return layer.id===lid; });
+    if(!baseLayer) return null;
+    var mergedLayer = getLayerForBoard(sourceSid, baseLayer);
+    var keys = ["x","y","w","h","hidden","manualBox"];
+    if(baseLayer.type==="image") keys = keys.concat(["src","imgW","imgH","imgS","imgX","imgY"]);
+    if(baseLayer.type==="text") keys = keys.concat(["content","font","weight","ls","lh","align","color","fs"]);
+    if(baseLayer.role==="cta") keys.push("bg");
+    return keys.reduce(function(acc, key){
+      if(key in mergedLayer) acc[key] = mergedLayer[key];
+      return acc;
+    }, {});
+  }
+  function applyCurrentLayerToBoards(){
+    if(!activeBoard || !activeEl) return;
+    var payload = getReplicableLayerProps(activeBoard, activeEl);
+    var targetIds = getApplyTargetBoardIds(activeBoard);
+    if(!payload || targetIds.length===0) return;
+    saveHistory();
+    setOverrides(function(prev){
+      var next = Object.assign({}, prev);
+      targetIds.forEach(function(boardId){
+        var board = Object.assign({}, next[boardId] || {});
+        board[activeEl] = Object.assign({}, board[activeEl] || {}, payload);
+        next[boardId] = board;
+      });
+      return next;
+    });
   }
   function clearLayerSelection(){
     setActiveEl(null);
@@ -511,6 +579,7 @@ export default function App(){
   }
   function handleLayerPanelSelect(layer, boardLayer, isShiftKey){
     if(isShiftKey){
+      if(activeBoard) setSelectedBoardIds(function(prev){ return prev.indexOf(activeBoard)!==-1 ? prev : [activeBoard]; });
       var alreadySelected = selectedEls.indexOf(layer.id) !== -1;
       var nextSelected = alreadySelected ? selectedEls.filter(function(id){return id!==layer.id}) : selectedEls.concat([layer.id]);
       setSelectedEls(nextSelected);
@@ -519,6 +588,7 @@ export default function App(){
       else syncEditingStateForLayer(null);
       return;
     }
+    if(activeBoard) setSelectedBoardIds(function(prev){ return prev.indexOf(activeBoard)!==-1 ? prev : [activeBoard]; });
     setSelectedEls([layer.id]);
     setActiveEl(layer.id);
     syncEditingStateForLayer(boardLayer);
@@ -529,28 +599,18 @@ export default function App(){
     else updateLayer(layer.id,"visible",!layer.visible);
   }
   function handleLayerPanelRemoveImage(){
-    if(!imgLayer) return;
+    var targetImageLayerId = activeLayerObj && activeLayerObj.type==="image" ? activeLayerObj.id : (imgLayer && imgLayer.id);
+    if(!imgLayer || !activeBoard || !targetImageLayerId) return;
     saveHistory();
-    setLayers(function(prev){
-      return prev.map(function(layer){
-        if(layer.type!=="image") return layer;
-        return Object.assign({}, layer, { src:null, imgW:0, imgH:0 });
-      });
-    });
+    setOv(activeBoard, targetImageLayerId, {src:null, imgW:0, imgH:0, hidden:false});
     imgObjRef.current = null;
   }
-  function applyImageDataUrl(dataUrl){
+  function applyImageDataUrlToBoard(sid,lid,dataUrl){
     return new Promise(function(resolve,reject){
       var img = new Image();
       img.onload = function(){
         imgObjRef.current = img;
-        setLayers(function(prev){
-          return prev.map(function(layer){
-            return layer.type==="image"
-              ? Object.assign({}, layer, { src:dataUrl, imgW:img.naturalWidth, imgH:img.naturalHeight })
-              : layer;
-          });
-        });
+        setOv(sid, lid, {src:dataUrl, imgW:img.naturalWidth, imgH:img.naturalHeight, hidden:false});
         resolve(img);
       };
       img.onerror = reject;
@@ -825,6 +885,19 @@ export default function App(){
   useEffect(function(){
     function onMove(e){
       var p=panRef.current;if(p&&p.type==="pan"){e.preventDefault();setPan({x:p.sx+((e.clientX-p.mx)*(p.boost||1)),y:p.sy+((e.clientY-p.my)*(p.boost||1))});return}
+      var bs=boardSelectRef.current;
+      if(bs){
+        e.preventDefault();
+        var canvasRect = canvasRef.current ? canvasRef.current.getBoundingClientRect() : null;
+        if(!canvasRect) return;
+        bs.moved = bs.moved || Math.abs(e.clientX-bs.sx)>3 || Math.abs(e.clientY-bs.sy)>3;
+        var left = Math.min(bs.sx, e.clientX);
+        var top = Math.min(bs.sy, e.clientY);
+        var right = Math.max(bs.sx, e.clientX);
+        var bottom = Math.max(bs.sy, e.clientY);
+        setBoardSelectionBox({left:left-canvasRect.left, top:top-canvasRect.top, width:right-left, height:bottom-top});
+        return;
+      }
       var d=dragRef.current;if(!d)return;e.preventDefault();
       var dx=e.clientX-d.mx,dy=e.clientY-d.my;
       var pxZ=(dx/(d.bw*zoom))*100,pyZ=(dy/(d.bh*zoom))*100;
@@ -878,15 +951,41 @@ export default function App(){
       }
       setTick(function(c){return c+1});
     }
-    function onUp(){panRef.current=null;setIsPanning(false);if(dragRef.current){dragRef.current=null;document.body.style.cursor=""}setTick(function(c){return c+1})}
+    function onUp(e){
+      panRef.current=null;setIsPanning(false);
+      if(boardSelectRef.current){
+        var bs = boardSelectRef.current;
+        boardSelectRef.current = null;
+        setBoardSelectionBox(null);
+        if(!bs.moved){
+          clearBoardFocus();
+        }else{
+          var left = Math.min(bs.sx, e.clientX);
+          var top = Math.min(bs.sy, e.clientY);
+          var right = Math.max(bs.sx, e.clientX);
+          var bottom = Math.max(bs.sy, e.clientY);
+          var hitIds = visSizes.filter(function(size){
+            var node = document.querySelector('[data-bid="'+size.id+'"]');
+            if(!node) return false;
+            var rect = node.getBoundingClientRect();
+            return !(rect.right < left || rect.left > right || rect.bottom < top || rect.top > bottom);
+          }).map(function(size){ return size.id; });
+          var nextIds = bs.additive ? Array.from(new Set(bs.baseSelection.concat(hitIds))) : hitIds;
+          setBoardSelection(nextIds, hitIds.length ? hitIds[hitIds.length-1] : (nextIds.length ? nextIds[nextIds.length-1] : null));
+        }
+      }
+      if(dragRef.current){dragRef.current=null;document.body.style.cursor=""}
+      setTick(function(c){return c+1})
+    }
     window.addEventListener("mousemove",onMove);window.addEventListener("mouseup",onUp);
     return function(){window.removeEventListener("mousemove",onMove);window.removeEventListener("mouseup",onUp)};
-  },[zoom,setOv]);
+  },[zoom,setOv,visSizes,selectedBoardIds]);
 
   function beginDrag(e,sid,lid,act){
     if(e.button !== 0 || spaceHeld) return; // 좌클릭이 아니거나 스페이스바 누른 상태면 캔버스 패닝으로 넘김
     e.stopPropagation();e.preventDefault();
     setEditingTextId(null);
+    setSelectedBoardIds(function(prev){ return prev.indexOf(sid)!==-1 ? prev : [sid]; });
     saveHistory(); 
     var el=e.target;while(el&&!el.getAttribute("data-bid"))el=el.parentElement;if(!el)return;
     var rect=el.getBoundingClientRect();
@@ -916,6 +1015,7 @@ export default function App(){
     if(spaceHeld) return;
     e.preventDefault(); e.stopPropagation();
     setEditingTextId(null);
+    setSelectedBoardIds(function(prev){ return prev.indexOf(sid)!==-1 ? prev : [sid]; });
     setActiveBoard(sid); setActiveEl(lid); setSelectedEls([lid]);
     setCtxMenu({x: e.clientX, y: e.clientY, sid: sid, lid: lid});
   }
@@ -924,7 +1024,7 @@ export default function App(){
     if(spaceHeld) return;
     e.preventDefault(); e.stopPropagation();
     if(e.target.getAttribute("data-bid")===sid){
-      setActiveBoard(sid); setActiveEl(null); setSelectedEls([]); setEditingTextId(null);
+      setSelectedBoardIds([sid]); setActiveBoard(sid); setActiveEl(null); setSelectedEls([]); setEditingTextId(null);
       setCtxMenu({x: e.clientX, y: e.clientY, sid: sid, lid: null});
     }
   }
@@ -934,11 +1034,16 @@ export default function App(){
     if(tag==="INPUT" || tag==="TEXTAREA" || tag==="SELECT") return;
     var boardTarget = e.target.closest ? e.target.closest("[data-bid]") : null;
     if(e.button===0 && !spaceHeld && !boardTarget){
-      setActiveBoard(null);
-      setActiveEl(null);
-      setSelectedEls([]);
-      setEditingTextId(null);
       setCtxMenu(null);
+      var canvasRect = canvasRef.current ? canvasRef.current.getBoundingClientRect() : null;
+      boardSelectRef.current = {
+        sx:e.clientX,
+        sy:e.clientY,
+        moved:false,
+        additive:!!(e.ctrlKey || e.metaKey),
+        baseSelection:(e.ctrlKey || e.metaKey) ? selectedBoardIds.slice() : []
+      };
+      if(canvasRect) setBoardSelectionBox({left:e.clientX-canvasRect.left, top:e.clientY-canvasRect.top, width:0, height:0});
       return;
     }
     // 휠클릭(1) 이거나, 스페이스바+좌클릭(0) 인 경우에만 패닝 시작
@@ -947,11 +1052,12 @@ export default function App(){
     }
   }
   function handleFile(file){
-    if(!file)return;
+    var targetImageLayerId = activeLayerObj && activeLayerObj.type==="image" ? activeEl : (imgLayer && imgLayer.id);
+    if(!file || !activeBoard || !targetImageLayerId)return;
     saveHistory();
     var reader=new FileReader();
     reader.onload=function(ev){
-      applyImageDataUrl(ev.target.result).catch(function(){});
+      applyImageDataUrlToBoard(activeBoard, targetImageLayerId, ev.target.result).catch(function(){});
     };
     reader.readAsDataURL(file);
   }
@@ -1175,42 +1281,42 @@ export default function App(){
     }, 1500);
   }
 
-  function renderExportCanvas(sz){return document.fonts.ready.then(function(){var c=document.createElement("canvas");c.width=sz.w;c.height=sz.h;var ctx=c.getContext("2d");ctx.fillStyle=bgColor;ctx.fillRect(0,0,sz.w,sz.h);var sorted=layers.slice().sort(function(a,b){return a.zIndex-b.zIndex});sorted.forEach(function(baseLayer){
+  function renderExportCanvas(sz){return document.fonts.ready.then(function(){var c=document.createElement("canvas");c.width=sz.w;c.height=sz.h;var ctx=c.getContext("2d");ctx.fillStyle=bgColor;ctx.fillRect(0,0,sz.w,sz.h);var sorted=layers.slice().sort(function(a,b){return a.zIndex-b.zIndex});return Promise.all(sorted.map(function(baseLayer){
     var layer = getLayerForBoard(sz.id, baseLayer);
     var isHidden = layer.hidden;
-    if(!layer.visible || isHidden) return;
+    if(!layer.visible || isHidden) return Promise.resolve();
     var er=getElRect(sz.id,layer);var dx=sz.w*er.x/100,dy=sz.h*er.y/100,dw=sz.w*er.w/100,dh=sz.h*er.h/100;
     
     if(layer.type==="image"){
-      if(imgObjRef.current&&layer.src){
-        var nw=imgObjRef.current.naturalWidth,nh=imgObjRef.current.naturalHeight;
+      if(!layer.src){
+        ctx.fillStyle="rgba(255,255,255,0.03)";ctx.fillRect(dx,dy,dw,dh);ctx.strokeStyle="rgba(255,255,255,0.15)";ctx.setLineDash([5,5]);ctx.lineWidth=2;ctx.strokeRect(dx,dy,dw,dh);ctx.setLineDash([]);
+        return Promise.resolve();
+      }
+      return loadImageElement(layer.src).then(function(image){
+        if(!image) return;
+        var nw=image.naturalWidth,nh=image.naturalHeight;
         var ov = getOv(sz.id, layer.id);
         var imgS = ov.imgS != null ? ov.imgS : 1;
         var imgX = ov.imgX != null ? ov.imgX : 0;
         var imgY = ov.imgY != null ? ov.imgY : 0;
-        
         ctx.save();
         ctx.beginPath();
         ctx.rect(dx, dy, dw, dh);
-        ctx.clip(); 
-
+        ctx.clip();
         var coverR = Math.max(dw/nw, dh/nh);
         var baseW = nw * coverR;
         var baseH = nh * coverR;
-
         var cx = dx + dw/2 + (dw * imgX / 100);
         var cy = dy + dh/2 + (dh * imgY / 100);
-
         var finalW = baseW * imgS;
         var finalH = baseH * imgS;
-
-        ctx.drawImage(imgObjRef.current, cx - finalW/2, cy - finalH/2, finalW, finalH);
+        ctx.drawImage(image, cx - finalW/2, cy - finalH/2, finalW, finalH);
         ctx.restore();
-      }else{
-        ctx.fillStyle="rgba(255,255,255,0.03)";ctx.fillRect(dx,dy,dw,dh);ctx.strokeStyle="rgba(255,255,255,0.15)";ctx.setLineDash([5,5]);ctx.lineWidth=2;ctx.strokeRect(dx,dy,dw,dh);ctx.setLineDash([])
-      }
+      });
     }else if(layer.type==="text"){
-      var fs=er.fs;if(fs<=0)return;ctx.font=layer.weight+" "+fs+'px "'+layer.font+'","Pretendard","Noto Sans KR",sans-serif';var tx,ty=dy+dh/2;if(layer.align==="center"){ctx.textAlign="center";tx=dx+dw/2}else if(layer.align==="right"){ctx.textAlign="right";tx=dx+dw}else{ctx.textAlign="left";tx=dx}if(layer.role==="cta"&&layer.bg){var met=ctx.measureText(layer.content);var pH=fs*0.3,pV=fs*0.2;var bw=met.width+pH*2,bh=fs+pV*2;var bx=tx-bw/2,by=ty-bh/2;if(layer.align==="left")bx=tx;if(layer.align==="right")bx=tx-bw;ctx.fillStyle=layer.bg;ctx.beginPath();var rd=Math.min(fs*.2,bh/3);ctx.moveTo(bx+rd,by);ctx.lineTo(bx+bw-rd,by);ctx.quadraticCurveTo(bx+bw,by,bx+bw,by+rd);ctx.lineTo(bx+bw,by+bh-rd);ctx.quadraticCurveTo(bx+bw,by+bh,bx+bw-rd,by+bh);ctx.lineTo(bx+rd,by+bh);ctx.quadraticCurveTo(bx,by+bh,bx,by+bh-rd);ctx.lineTo(bx,by+rd);ctx.quadraticCurveTo(bx,by,bx+rd,by);ctx.closePath();ctx.fill();ctx.textBaseline="middle";ctx.fillStyle=layer.color;ctx.fillText(layer.content,tx,ty);}else{ctx.textBaseline="top";ctx.fillStyle=layer.color;var lines=layer.content.split("\n");var lineH=fs*(layer.lh || DEFAULT_LINE_HEIGHT);var startY=dy;for(var li=0;li<lines.length;li++){ctx.fillText(lines[li],tx,startY+(li*lineH));}}}});return c})}
+      var fs=er.fs;if(fs<=0)return Promise.resolve();ctx.font=layer.weight+" "+fs+'px "'+layer.font+'","Pretendard","Noto Sans KR",sans-serif';var tx,ty=dy+dh/2;if(layer.align==="center"){ctx.textAlign="center";tx=dx+dw/2}else if(layer.align==="right"){ctx.textAlign="right";tx=dx+dw}else{ctx.textAlign="left";tx=dx}if(layer.role==="cta"&&layer.bg){var met=ctx.measureText(layer.content);var pH=fs*0.3,pV=fs*0.2;var bw=met.width+pH*2,bh=fs+pV*2;var bx=tx-bw/2,by=ty-bh/2;if(layer.align==="left")bx=tx;if(layer.align==="right")bx=tx-bw;ctx.fillStyle=layer.bg;ctx.beginPath();var rd=Math.min(fs*.2,bh/3);ctx.moveTo(bx+rd,by);ctx.lineTo(bx+bw-rd,by);ctx.quadraticCurveTo(bx+bw,by,bx+bw,by+rd);ctx.lineTo(bx+bw,by+bh-rd);ctx.quadraticCurveTo(bx+bw,by+bh,bx+bw-rd,by+bh);ctx.lineTo(bx+rd,by+bh);ctx.quadraticCurveTo(bx,by+bh,bx,by+bh-rd);ctx.lineTo(bx,by+rd);ctx.quadraticCurveTo(bx,by,bx+rd,by);ctx.closePath();ctx.fill();ctx.textBaseline="middle";ctx.fillStyle=layer.color;ctx.fillText(layer.content,tx,ty);}else{ctx.textBaseline="top";ctx.fillStyle=layer.color;var lines=layer.content.split("\n");var lineH=fs*(layer.lh || DEFAULT_LINE_HEIGHT);var startY=dy;for(var li=0;li<lines.length;li++){ctx.fillText(lines[li],tx,startY+(li*lineH));}}}
+    return Promise.resolve();
+  })).then(function(){return c})})}
   function exportOne(sz){return renderExportCanvas(sz).then(function(c){return new Promise(function(resolve){c.toBlob(function(blob){var url=URL.createObjectURL(blob);var a=document.createElement("a");a.href=url;a.download="App_"+sz.w+"x"+sz.h+"_"+sz.label.replace(/[\s/:]+/g,"_")+".png";document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);resolve()},"image/png")})})}
   async function exportWithDirectoryPicker(list){
     var dirHandle = await window.showDirectoryPicker();
@@ -1234,6 +1340,18 @@ export default function App(){
   function addCustom(){if(!customForm.name||!customForm.w||!customForm.h)return;var id="c"+Date.now();setCustomSizes(function(p){return p.concat([{id:id,w:+customForm.w,h:+customForm.h,label:customForm.name,safe:{t:+customForm.st,b:+customForm.sb,l:+customForm.sl,r:+customForm.sr,pct:false}}])});setSelIds(function(p){return p.concat([id])});setCustomForm({name:"",w:"",h:"",st:"0",sb:"0",sl:"0",sr:"0"});setShowCF(false)}
   var crVal=activeLayerObj&&activeLayerObj.type==="text"?contrast(activeLayerObj.color,bgColor):0;
   var boardScale=.25;
+  function handleBoardPointerDown(e, sid){
+    if(e.button!==0 || spaceHeld) return;
+    if(e.target.getAttribute("data-bid")!==sid) return;
+    e.stopPropagation();
+    if(e.ctrlKey || e.metaKey){
+      var alreadySelected = selectedBoardIds.indexOf(sid)!==-1;
+      var nextIds = alreadySelected ? selectedBoardIds.filter(function(id){ return id!==sid; }) : selectedBoardIds.concat([sid]);
+      setBoardSelection(nextIds, nextIds.length ? (alreadySelected ? nextIds[nextIds.length-1] : sid) : null);
+      return;
+    }
+    setBoardSelection([sid], sid);
+  }
   function syncEditingTextarea(node){
     if(!node) return;
     node.style.height = "0px";
@@ -1243,13 +1361,13 @@ export default function App(){
   }
 
   function renderBoard(sz){
-    var dw=sz.w*boardScale,dh=sz.h*boardScale;var sa=getSafe(sz);var isAct=activeBoard===sz.id;var isExp=!!exportChecked[sz.id];var lo=computeLayout(sz.w,sz.h);var mutated=boardHasChanges(sz.id);
+    var dw=sz.w*boardScale,dh=sz.h*boardScale;var sa=getSafe(sz);var isAct=activeBoard===sz.id;var isBoardSelected=selectedBoardIds.indexOf(sz.id)!==-1;var isExp=!!exportChecked[sz.id];var lo=computeLayout(sz.w,sz.h);var mutated=boardHasChanges(sz.id);
     return React.createElement("div",{key:sz.id,style:{display:"inline-flex",flexDirection:"column",alignItems:"center",gap:6,flexShrink:0,verticalAlign:"top"}},
       React.createElement("label",{style:{display:"flex",alignItems:"center",gap:3,fontSize:9,cursor:"pointer",color:isExp?"#00d4ff":"#555",userSelect:"none"}},React.createElement("input",{type:"checkbox",checked:isExp,onChange:function(){setExportChecked(function(p){var n=Object.assign({},p);n[sz.id]=!p[sz.id];return n})},style:{accentColor:"#00d4ff"}}),"Export"),
       React.createElement("div",{"data-bid":sz.id,
-        onMouseDown:function(e){if(e.button!==0 || spaceHeld)return; if(e.target.getAttribute("data-bid")===sz.id){setActiveBoard(sz.id);setActiveEl(null);setSelectedEls([]);setEditingTextId(null);}},
+        onMouseDown:function(e){handleBoardPointerDown(e, sz.id)},
         onContextMenu:function(e){handleContextMenuBoard(e, sz.id)},
-        style:{width:dw,height:dh,position:"relative",overflow:clipBoard?"hidden":"visible",borderRadius:2,border:"1px solid #333",background:bgColor,boxSizing:"border-box",boxShadow:isAct?"0 0 0 2px rgba(0,212,255,.92), 0 0 12px rgba(0,212,255,.15)":"none"}},
+        style:{width:dw,height:dh,position:"relative",overflow:clipBoard?"hidden":"visible",borderRadius:2,border:"1px solid #333",background:bgColor,boxSizing:"border-box",boxShadow:isAct?"0 0 0 2px rgba(0,212,255,.92), 0 0 12px rgba(0,212,255,.15)":(isBoardSelected?"0 0 0 2px rgba(124,196,255,.45)":"none")}},
         layers.map(function(baseLayer){
           var layer = getLayerForBoard(sz.id, baseLayer);
           if(!layer.visible || layer.hidden) return null;
@@ -1330,6 +1448,15 @@ export default function App(){
       )
     );
   }
+  var layerListImageLayer = (function(){
+    if(activeBoard && activeBaseLayerObj && activeBaseLayerObj.type==="image"){
+      return getLayerForBoard(activeBoard, activeBaseLayerObj);
+    }
+    if(activeBoard && imgLayer){
+      return getLayerForBoard(activeBoard, imgLayer);
+    }
+    return imgLayer;
+  })();
 
 return React.createElement("div",{className:"app-shell",style:{width:"100%",height:"100vh",maxHeight:"100vh",background:"linear-gradient(180deg,#0b1017 0%, #0f1720 100%)",color:MD.text,fontFamily:"Pretendard,'Noto Sans KR',Roboto,sans-serif",fontSize:12,display:"flex",flexDirection:"column",overflow:"hidden"}},
 
@@ -1400,7 +1527,7 @@ return React.createElement("div",{className:"app-shell",style:{width:"100%",heig
           setLayerNameDraft:setLayerNameDraft,
           commitLayerNameEdit:commitLayerNameEdit,
           fileRef:fileRef,
-          imgLayer:imgLayer,
+          imgLayer:layerListImageLayer,
           onUploadImageFile:handleFile,
           onRemoveImage:handleLayerPanelRemoveImage,
           imageStatusText:"PNG를 업로드하거나 드래그해서 현재 이미지 레이어에 적용합니다.",
@@ -1433,6 +1560,7 @@ return React.createElement("div",{className:"app-shell",style:{width:"100%",heig
         React.createElement("div",{ref:viewportRef,style:{transform:"translate("+pan.x+"px,"+pan.y+"px) scale("+zoom+")",transformOrigin:"0 0",display:"flex",flexWrap:"wrap",gap:20,alignItems:"flex-start",padding:40,width:"max-content"}},
           visSizes.length===0?React.createElement("div",{style:{color:"#333",fontSize:13,padding:40}},"← 좌측에서 사이즈를 선택하세요"):visSizes.map(function(s){return renderBoard(s)})
         ),
+        boardSelectionBox&&React.createElement("div",{style:{position:"absolute",left:boardSelectionBox.left,top:boardSelectionBox.top,width:boardSelectionBox.width,height:boardSelectionBox.height,border:"1px solid rgba(124,196,255,.92)",background:"rgba(124,196,255,.12)",boxShadow:"inset 0 0 0 1px rgba(255,255,255,.06)",pointerEvents:"none",zIndex:999}}),
         /* Context Menu (우클릭 메뉴) */
         ctxMenu&&React.createElement("div",{style:{position:"fixed",left:ctxMenu.x,top:ctxMenu.y,background:MD.surface,border:"1px solid "+MD.line,borderRadius:16,padding:6,zIndex:9999,boxShadow:MD.shadow,width:190,fontFamily:"Pretendard,'Noto Sans KR',Roboto,sans-serif"}},
           ctxMenu.lid ? React.createElement(React.Fragment,null,
@@ -1555,6 +1683,10 @@ return React.createElement("div",{className:"app-shell",style:{width:"100%",heig
                   React.createElement(NumberInput,{label:"Scale",value:getOv(activeBoard,activeEl).imgS??1,onFocus:saveHistory,onChange:function(v){setOv(activeBoard,activeEl,{imgS:v})},min:0.1,max:5,step:0.05}),
                   React.createElement(NumberInput,{label:"Pan X",value:getOv(activeBoard,activeEl).imgX??0,onFocus:saveHistory,onChange:function(v){setOv(activeBoard,activeEl,{imgX:v})},min:-200,max:200,step:1,unit:"%"}),
                   React.createElement(NumberInput,{label:"Pan Y",value:getOv(activeBoard,activeEl).imgY??0,onFocus:saveHistory,onChange:function(v){setOv(activeBoard,activeEl,{imgY:v})},min:-200,max:200,step:1,unit:"%"})
+                ),
+                React.createElement("div",{style:{marginTop:10,paddingTop:10,borderTop:"1px solid #1a1a1a"}},
+                  React.createElement("button",{onClick:applyCurrentLayerToBoards,disabled:getApplyTargetBoardIds(activeBoard).length===0,style:{width:"100%",padding:"7px 10px",border:"1px solid rgba(124,196,255,.22)",borderRadius:10,background:"rgba(124,196,255,.08)",color:getApplyTargetBoardIds(activeBoard).length===0?MD.muted:MD.primary,cursor:getApplyTargetBoardIds(activeBoard).length===0?"default":"pointer",fontSize:10,fontWeight:700,fontFamily:"inherit",opacity:getApplyTargetBoardIds(activeBoard).length===0?.5:1}},getLayerApplyButtonLabel(activeBoard)),
+                  React.createElement("div",{style:{fontSize:9,color:MD.muted,marginTop:6,lineHeight:1.5}},"여러 보드를 선택하면 그 보드들에만, 선택이 하나면 전체 보드에 적용됩니다.")
                 )
               )
             :React.createElement(React.Fragment,null,
@@ -1582,7 +1714,9 @@ return React.createElement("div",{className:"app-shell",style:{width:"100%",heig
                     saveHistory();
                     setOv(activeBoard, activeEl, {hidden: !isHidden});
                   },style:{width:"100%",padding:"4px",border:isHidden?"1px solid #00d4ff":"1px solid #552222",borderRadius:3,background:isHidden?"rgba(0,212,255,0.1)":"rgba(255,0,0,0.1)",color:isHidden?"#00d4ff":"#f44",cursor:"pointer",fontSize:10,fontFamily:"inherit",marginTop:4}}, isHidden ? "👁 이 보드에서 숨김 해제" : "🚫 이 보드에서 숨기기")
-                })()
+                })(),
+                React.createElement("button",{onClick:applyCurrentLayerToBoards,disabled:getApplyTargetBoardIds(activeBoard).length===0,style:{width:"100%",padding:"7px 10px",border:"1px solid rgba(124,196,255,.22)",borderRadius:10,background:"rgba(124,196,255,.08)",color:getApplyTargetBoardIds(activeBoard).length===0?MD.muted:MD.primary,cursor:getApplyTargetBoardIds(activeBoard).length===0?"default":"pointer",fontSize:10,fontWeight:700,fontFamily:"inherit",marginTop:8,opacity:getApplyTargetBoardIds(activeBoard).length===0?.5:1}},getLayerApplyButtonLabel(activeBoard)),
+                React.createElement("div",{style:{fontSize:9,color:MD.muted,marginTop:6,lineHeight:1.5}},"여러 보드를 선택하면 그 보드들에만, 선택이 하나면 전체 보드에 적용됩니다.")
               ),
               React.createElement("div",{style:{padding:10,borderBottom:"1px solid #1a1a1a"}},
                 React.createElement("div",{style:sT},"🔤 타이포"),
