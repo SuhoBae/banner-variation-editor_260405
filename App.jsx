@@ -1131,6 +1131,7 @@ return React.createElement("div",{className:"app-shell",style:{width:"100%",heig
         React.createElement(LayerListPanel,{
           layers:layers,
           activeBoard:activeBoard,
+          isDisabled:!activeBoard,
           getLayerForBoard:getLayerForBoard,
           selectedEls:selectedEls,
           getLayerDisplayName:getLayerDisplayName,
@@ -1357,7 +1358,11 @@ return React.createElement("div",{className:"app-shell",style:{width:"100%",heig
                 }},style:{width:"100%",padding:"8px 10px",border:"1px solid "+MD.dangerSoft,borderRadius:12,background:MD.dangerSoft,color:MD.danger,cursor:"pointer",fontSize:11,fontWeight:700,fontFamily:"inherit"}},"이 보드에서 레이어 삭제")
               )
             )
-          : (!activeBoard ? React.createElement("div",{style:{padding:16,color:"#333",fontSize:11,textAlign:"center",marginTop:20}},"아트보드나 요소를 클릭하세요") : null),
+          : (!activeBoard ? React.createElement("div",{style:{padding:16,margin:12,border:"1px dashed "+MD.line,borderRadius:16,background:"rgba(255,255,255,.02)",color:MD.muted,fontSize:11,lineHeight:1.7,textAlign:"center",marginTop:20,opacity:.74}},
+              React.createElement("div",{style:{fontSize:10,textTransform:"uppercase",letterSpacing:".08em",fontWeight:700,marginBottom:8,color:MD.muted}},"Properties Disabled"),
+              React.createElement("div",null,"아트보드를 먼저 선택하면"),
+              React.createElement("div",null,"속성 패널이 활성화됩니다.")
+            ) : null),
         React.createElement("div",{style:{padding:8,borderTop:"1px solid #1a1a1a",marginTop:"auto",fontSize:9,color:"#333",lineHeight:1.8}},
           React.createElement("div",null,"🖱 스크롤: 줌 | Space+드래그: 패닝"),
           React.createElement("div",null,"단축키: Ctrl+Z (실행취소)"),

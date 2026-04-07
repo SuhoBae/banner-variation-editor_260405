@@ -187,6 +187,12 @@ Situation: The user reported that resize handles and some inspector controls did
 
 Resolution: Added WebKit-safe form normalization for number inputs, hid textarea scrollbars with a WebKit rule, added `WebkitBackdropFilter` for the header blur, and hardened resize handles with explicit min sizes, box sizing, touch/user-select guards, and tap-highlight removal. This pass improves static compatibility, but true Safari rendering still needs live verification on a Mac or Safari browser.
 
+[2026-04-07] Parent-Selection Driven Disabled UI
+
+Situation: Panels whose controls depend on an upper-level selection still looked active even when their parent context was missing, which made the editor feel misleading. A clear example was the left layer panel appearing interactive before any artboard had been selected.
+
+Resolution: The layer panel now accepts an explicit disabled state and visually deactivates itself while also blocking selection, visibility toggles, uploads, and add-layer actions until an artboard is selected. The right properties area also shows a disabled-state placeholder when no artboard context exists, making the selection hierarchy clearer.
+
 [2026-04-06] line-height 실측 반영과 레이어명 편집 도입
 
 상황: 텍스트 레이어 선택 UI가 줄 수는 따라가더라도 `line-height` 값과 실제 줄바꿈 높이를 충분히 반영하지 못했고, 레이어 이동은 선택 스트로크 인식 영역이 좁아 잡기 어려웠음. 또한 좌측 레이어 패널에서 레이어명을 직접 정리할 수 없어 편집 캔버스와 목록 간의 맥락 연결이 약했음.
