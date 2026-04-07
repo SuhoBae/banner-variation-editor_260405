@@ -281,60 +281,30 @@ export default function LayerListPanel(props) {
             React.createElement("div", { style: { fontSize: 14, color: MD.text } }, "PNG"),
             React.createElement("div", { style: { color: "#64748b", fontSize: 10, lineHeight: 1.5, marginTop: 4 } }, "이미지를 드롭하거나 아래 버튼으로 추가"),
             React.createElement("div", { style: { color: "#475569", fontSize: 9, marginTop: 4, lineHeight: 1.5 } }, props.imageStatusText || "이미지 생성 준비됨")
-          )
-      ,
+          ),
       React.createElement(
-        "div",
-        { style: { display: "flex", gap: 8 } },
-        React.createElement(
-          "button",
-          {
-            disabled: isDisabled,
-            onClick: function (event) {
-              event.stopPropagation();
-              if (isDisabled) return;
-              props.fileRef.current && props.fileRef.current.click();
-            },
-            style: {
-              flex: 1,
-              padding: "8px 10px",
-              borderRadius: 10,
-              border: "1px solid " + MD.line,
-              background: MD.surface2,
-              color: MD.text,
-              cursor: isDisabled ? "default" : "pointer",
-              fontSize: 11,
-              fontWeight: 700,
-              fontFamily: "inherit",
-            },
+        "button",
+        {
+          disabled: isDisabled,
+          onClick: function (event) {
+            event.stopPropagation();
+            if (isDisabled) return;
+            props.fileRef.current && props.fileRef.current.click();
           },
-          "Upload PNG"
-        ),
-        React.createElement(
-          "button",
-          {
-            disabled: isDisabled || props.imageGenerateBusy,
-            onClick: function (event) {
-              event.stopPropagation();
-              if (isDisabled || props.imageGenerateBusy || !props.onGenerateImage) return;
-              props.onGenerateImage();
-            },
-            style: {
-              flex: 1,
-              padding: "8px 10px",
-              borderRadius: 10,
-              border: "1px solid rgba(124,196,255,.22)",
-              background: "rgba(124,196,255,.1)",
-              color: MD.primary,
-              cursor: isDisabled || props.imageGenerateBusy ? "default" : "pointer",
-              fontSize: 11,
-              fontWeight: 700,
-              fontFamily: "inherit",
-              opacity: isDisabled || props.imageGenerateBusy ? 0.55 : 1,
-            },
+          style: {
+            width: "100%",
+            padding: "8px 10px",
+            borderRadius: 10,
+            border: "1px solid " + MD.line,
+            background: MD.surface2,
+            color: MD.text,
+            cursor: isDisabled ? "default" : "pointer",
+            fontSize: 11,
+            fontWeight: 700,
+            fontFamily: "inherit",
           },
-          props.imageGenerateBusy ? "Generating..." : "Generate image"
-        )
+        },
+        "Upload PNG"
       )
     ),
     React.createElement("input", {

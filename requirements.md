@@ -40,3 +40,8 @@
 - Number inputs, textarea overlays, and resize handles must avoid browser-native clipping or disappearing UI.
 - Browser-specific visual features such as blur or scrollbar hiding must degrade gracefully and include WebKit-safe handling where applicable.
 - Compatibility checks must be recorded in project docs whenever a control relies on custom form styling or tiny absolute-positioned interaction targets.
+
+## Image Workflow Requirement (2026-04-07)
+- The image workflow is upload-first: users replace visuals with manual PNG upload or drag-and-drop.
+- The product should not depend on a paid image-generation backend for its baseline editing flow.
+- If image AI is reconsidered later, it should return as a separately scoped feature with clear cost, env, and UX decisions rather than a partially wired default button.

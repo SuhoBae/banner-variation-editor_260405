@@ -181,8 +181,6 @@ export default function App(){
   var _saveName=useState(""); var saveNameDraft=_saveName[0],setSaveNameDraft=_saveName[1];
   var _saveMsg=useState("현재 작업 상태를 저장하고 다시 불러올 수 있습니다."); var saveMessage=_saveMsg[0],setSaveMessage=_saveMsg[1];
   var _saveBusy=useState(false); var saveBusy=_saveBusy[0],setSaveBusy=_saveBusy[1];
-  var _imgGenBusy=useState(false); var imageGenerateBusy=_imgGenBusy[0],setImageGenerateBusy=_imgGenBusy[1];
-  var _imgGenStatus=useState("Generate image를 누르면 현재 보드 비율에 맞춰 이미지를 생성합니다."); var imageGenerateStatus=_imgGenStatus[0],setImageGenerateStatus=_imgGenStatus[1];
   
   var _sumId=useState(null); var summarizingId=_sumId[0], setSummarizingId=_sumId[1]; // 에이전트 요약 상태
   
@@ -558,36 +556,6 @@ export default function App(){
       img.onerror = reject;
       img.src = dataUrl;
     });
-  }
-  async function handleGenerateImageRequest(){
-    var activeSize = activeBoard ? getSizeById(activeBoard) : null;
-    var promptText = typeof window !== "undefined" && typeof window.prompt === "function"
-      ? window.prompt("생성할 이미지 프롬프트를 입력하세요.", "프리미엄 전자제품 배너용 깔끔한 스튜디오 제품 비주얼, 광고용, realistic, high detail")
-      : "";
-    if(!promptText || !promptText.trim()) return;
-    saveHistory();
-    setImageGenerateBusy(true);
-    setImageGenerateStatus("이미지 생성 중...");
-    try{
-      var response = await fetch("/api/generate-image",{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({
-          prompt: promptText.trim(),
-          boardWidth: activeSize ? activeSize.w : 1024,
-          boardHeight: activeSize ? activeSize.h : 1024,
-          quality: "medium"
-        })
-      });
-      var payload = await response.json();
-      if(!response.ok) throw new Error(payload && payload.error ? payload.error : "이미지 생성에 실패했습니다.");
-      await applyImageDataUrl(payload.dataUrl);
-      setImageGenerateStatus("생성 이미지를 현재 이미지 레이어에 적용했습니다.");
-    }catch(error){
-      setImageGenerateStatus(error && error.message ? error.message : "이미지 생성에 실패했습니다.");
-    }finally{
-      setImageGenerateBusy(false);
-    }
   }
   function handleAddTextLayer(){
     saveHistory();
@@ -978,7 +946,15 @@ export default function App(){
       e.preventDefault();setIsPanning(true);panRef.current={type:"pan",mx:e.clientX,my:e.clientY,sx:pan.x,sy:pan.y,boost:1.22};
     }
   }
-  function handleFile(file){if(!file)return;saveHistory();var reader=new FileReader();reader.onload=function(ev){var img=new Image();img.onload=function(){imgObjRef.current=img;setLayers(function(p){return p.map(function(l){return l.type==="image"?Object.assign({},l,{src:ev.target.result,imgW:img.naturalWidth,imgH:img.naturalHeight}):l})})};img.src=ev.target.result};reader.readAsDataURL(file)}
+  function handleFile(file){
+    if(!file)return;
+    saveHistory();
+    var reader=new FileReader();
+    reader.onload=function(ev){
+      applyImageDataUrl(ev.target.result).catch(function(){});
+    };
+    reader.readAsDataURL(file);
+  }
   function getSnapshotResolvedSize(snapshot, size){
     if(!size) return null;
     var override = snapshot && snapshot.boardSizeOverrides ? snapshot.boardSizeOverrides[size.id] : null;
@@ -1427,9 +1403,7 @@ return React.createElement("div",{className:"app-shell",style:{width:"100%",heig
           imgLayer:imgLayer,
           onUploadImageFile:handleFile,
           onRemoveImage:handleLayerPanelRemoveImage,
-          onGenerateImage:handleGenerateImageRequest,
-          imageGenerateBusy:imageGenerateBusy,
-          imageStatusText:imageGenerateStatus,
+          imageStatusText:"PNG를 업로드하거나 드래그해서 현재 이미지 레이어에 적용합니다.",
           onAddTextLayer:handleAddTextLayer,
           onDeleteLayer:function(layerId){
             if(!activeBoard || !layerId) return;
