@@ -1,30 +1,6 @@
 import React from "react";
 import { MD, sT } from "../config.js";
 
-function TransformBadge() {
-  return React.createElement(
-    "span",
-    {
-      style: {
-        width: 12,
-        height: 12,
-        borderRadius: 4,
-        border: "0.5px solid rgba(255,255,255,.8)",
-        background: "rgba(124,196,255,.16)",
-        color: MD.primary,
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontSize: 9,
-        fontWeight: 900,
-        lineHeight: 1,
-        flexShrink: 0,
-      },
-    },
-    "+"
-  );
-}
-
 export default function LayerListPanel(props) {
   var isDisabled = !!props.isDisabled;
 
@@ -138,8 +114,7 @@ export default function LayerListPanel(props) {
           ),
           React.createElement(
             "div",
-            { style: { display: "flex", alignItems: "center", gap: 6, minWidth: 0 } },
-            React.createElement(TransformBadge, null),
+            { style: { display: "flex", alignItems: "center", minWidth: 0 } },
             props.editingLayerNameId === layer.id && !isDisabled
               ? React.createElement("input", {
                   autoFocus: true,

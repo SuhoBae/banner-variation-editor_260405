@@ -282,3 +282,9 @@ Resolution: Replaced the bottom tray with a localStorage-backed saved history pa
 Situation: As the editor accumulated rapid feature work, some legacy helpers and refs from older edit and asset flows remained in the file even after the UI moved on. The undo history path also re-serialized the full editor state multiple times per save, which added avoidable overhead in a single-file React app.
 
 Resolution: Removed unused legacy pieces such as the old editable-text parser helper, the stale asset tray ref, and an unreferenced image sync helper. Added a small history serialization layer so undo snapshots compare against one cached serialized string instead of repeatedly stringifying the same state tree multiple times per history save. This keeps the current feature set intact while trimming code noise and reducing unnecessary work in the hot undo/save path.
+
+[2026-04-07] Unified Font Size Source and Outside Artboard Selection Stroke
+
+Situation: The typography panel still exposed a base `size` value while transform scaling changed the resolved `fs` override, which made the number input and resize-handle scaling feel disconnected. The layer-name transform badges also added visual noise, and the selected artboard stroke was still using an inside border that visually ate into the board.
+
+Resolution: Chose the rendered font size as the single interactive source of truth in the typography panel by binding the main `Size` input to the resolved `fs` value and updating the layer override directly, which keeps numeric font changes aligned with transform scaling. Removed the extra transform badge decoration from both the canvas label and the layer list. Switched active artboard emphasis from an inside border to an outside box-shadow stroke so selection feels external without changing physical layout thickness.
