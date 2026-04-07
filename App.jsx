@@ -534,6 +534,11 @@ export default function App(){
     updateLayer(imgLayer.id,"src",null);
     imgObjRef.current = null;
   }
+  function handleGenerateImageRequest(){
+    if(typeof window !== "undefined" && typeof window.alert === "function"){
+      window.alert("이미지 영역 일부를 생성 이미지로 채우는 기능은 구현 가능합니다. 다만 현재 앱에는 생성 모델/API 백엔드가 아직 연결되어 있지 않아, 지금 단계에서는 버튼과 워크플로만 준비해두고 실제 생성은 추후 연결이 필요합니다.");
+    }
+  }
   function handleAddTextLayer(){
     saveHistory();
     var id="l"+Date.now();
@@ -1372,6 +1377,7 @@ return React.createElement("div",{className:"app-shell",style:{width:"100%",heig
           imgLayer:imgLayer,
           onUploadImageFile:handleFile,
           onRemoveImage:handleLayerPanelRemoveImage,
+          onGenerateImage:handleGenerateImageRequest,
           onAddTextLayer:handleAddTextLayer,
           onDeleteLayer:function(layerId){
             if(!activeBoard || !layerId) return;
@@ -1536,25 +1542,12 @@ return React.createElement("div",{className:"app-shell",style:{width:"100%",heig
                 )
               ),
               React.createElement("div",{style:{padding:10,borderBottom:"1px solid #1a1a1a"}},
-                React.createElement("div",{style:sT},"📐 위치/크기 정렬"),
+                React.createElement("div",{style:sT},"📐 정렬 / 상태"),
                 selectedEls.length === 1 && React.createElement("div",{style:{display:"flex",gap:4,marginBottom:10}},
                   [{k:'L',l:'⇤'},{k:'C',l:'↔'},{k:'R',l:'⇥'},{k:'T',l:'⇡'},{k:'M',l:'↕'},{k:'B',l:'⇣'}].map(function(btn){
                     return React.createElement("button",{key:btn.k,onClick:function(){alignSelected(btn.k)},style:{flex:1,padding:"3px",border:"1px solid #222",borderRadius:2,cursor:"pointer",fontSize:12,background:"#1a1a1a",color:"#00d4ff"}},btn.l)
                   })
                 ),
-                (function(){var er=getElRect(activeBoard,activeLayerObj);return React.createElement(React.Fragment,null,
-                  React.createElement(NumberInput,{label:"X(%)",value:er.x,onFocus:saveHistory,onChange:function(v){setOv(activeBoard,activeEl,{x:v})},min:-50,max:150,unit:"%"}),
-                  React.createElement(NumberInput,{label:"Y(%)",value:er.y,onFocus:saveHistory,onChange:function(v){setOv(activeBoard,activeEl,{y:v})},min:-50,max:150,unit:"%"}),
-                  React.createElement(NumberInput,{label:"W(%)",value:er.w,onFocus:saveHistory,onChange:function(v){setOv(activeBoard,activeEl,{w:clamp(v,5,200)})},min:5,max:200,unit:"%"}),
-                  React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4,marginBottom:5}},
-                    React.createElement("span",{style:{fontSize:10,color:MD.muted,width:48,flexShrink:0}},"H(%)"),
-                    React.createElement("div",{style:Object.assign({},iS,{flex:1,display:"flex",alignItems:"center",justifyContent:"space-between"})},
-                      React.createElement("span",null,Math.round(er.h*100)/100),
-                      React.createElement("span",{style:{fontSize:10,color:MD.muted}},"auto")
-                    )
-                  ),
-                  React.createElement(NumberInput,{label:"폰트",value:er.fs,onFocus:saveHistory,onChange:function(v){setOv(activeBoard,activeEl,{fs:clamp(v,6,300)})},min:6,max:300,unit:"px"})
-                )})(),
                 React.createElement("button",{onClick:function(){saveHistory();clearBoardLayerOverride(activeBoard,activeEl)},style:{width:"100%",padding:"4px",border:"1px solid #222",borderRadius:3,background:"#0a0a0a",color:"#555",cursor:"pointer",fontSize:10,fontFamily:"inherit",marginTop:4}},"오버라이드 리셋"),
                 (function(){
                   var isHidden = overrides[activeBoard]?.[activeEl]?.hidden;
@@ -1629,25 +1622,27 @@ return React.createElement("div",{className:"app-shell",style:{width:"100%",heig
           React.createElement("button",{onClick:handleSaveProjectSnapshot,disabled:saveBusy,style:{padding:"9px 12px",borderRadius:10,border:"none",background:saveBusy?"#222":"linear-gradient(135deg,#7cc4ff,#4da2ff)",color:saveBusy?"#667085":"#08111b",cursor:saveBusy?"default":"pointer",fontSize:11,fontWeight:700,fontFamily:"inherit"}},"현재 작업 저장"),
           React.createElement("div",{style:{fontSize:10,color:"#64748b",lineHeight:1.6,padding:"10px 12px",border:"1px dashed "+MD.line,borderRadius:12,background:"rgba(255,255,255,.02)"}},"불러오기 전에는 경고창으로 현재 저장되지 않은 변경사항이 사라질 수 있음을 다시 확인합니다.")
         ),
-        React.createElement("div",{style:{flex:1,minWidth:0,overflowX:"auto",overflowY:"hidden"}},
+        React.createElement("div",{style:{flex:1,minWidth:0,overflowX:"hidden",overflowY:"auto"}},
           savedProjects.length===0
             ?React.createElement("div",{style:{height:"100%",minHeight:120,border:"1px dashed #222",borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",color:"#475569",fontSize:12,textAlign:"center",padding:20}},"저장된 작업 히스토리가 아직 없습니다.")
-            :React.createElement("div",{style:{display:"flex",gap:12,height:"100%"}},
+            :React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:10,paddingRight:4}},
                 savedProjects.map(function(entry){
-                  return React.createElement("div",{key:entry.id,style:{width:184,flexShrink:0,border:"1px solid #222",borderRadius:12,background:"#111",overflow:"hidden",display:"flex",flexDirection:"column"}},
-                    React.createElement("div",{style:{height:108,background:"#0a0a0a",display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}},
+                  return React.createElement("div",{key:entry.id,style:{border:"1px solid #222",borderRadius:12,background:"#111",overflow:"hidden",display:"flex",alignItems:"stretch",minHeight:112}},
+                    React.createElement("div",{style:{flex:1,minWidth:0,padding:"12px 12px 10px",display:"flex",flexDirection:"column",justifyContent:"space-between"}},
+                      React.createElement("div",null,
+                        React.createElement("div",{style:{fontSize:11,color:"#e2e8f0",fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},entry.name),
+                        React.createElement("div",{style:{fontSize:10,color:"#64748b",marginTop:4}},formatSnapshotSavedAt(entry.savedAt)),
+                        React.createElement("div",{style:{fontSize:10,color:"#64748b",marginTop:2}},entry.thumbRatio ? "정방형 썸네일 기준 " + entry.thumbRatio : "정방형 배너 없음")
+                      ),
+                      React.createElement("div",{style:{display:"flex",gap:6,marginTop:10}},
+                        React.createElement("button",{onClick:function(){handleLoadProjectSnapshot(entry);},style:{flex:1,padding:"6px 0",border:"none",borderRadius:8,background:"rgba(124,196,255,.14)",color:MD.primary,cursor:"pointer",fontSize:10,fontWeight:700,fontFamily:"inherit"}},"Load"),
+                        React.createElement("button",{onClick:function(){handleDeleteProjectSnapshot(entry.id);},style:{padding:"6px 10px",border:"1px solid rgba(255,123,114,.24)",borderRadius:8,background:"transparent",color:MD.danger,cursor:"pointer",fontSize:10,fontFamily:"inherit"}},"삭제")
+                      )
+                    ),
+                    React.createElement("div",{style:{width:112,flexShrink:0,background:"#0a0a0a",display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden",borderLeft:"1px solid #1a1a1a"}},
                       entry.thumbnail
-                        ?React.createElement("img",{src:entry.thumbnail,alt:entry.name,style:{width:"100%",height:"100%",objectFit:"cover",display:"block"}})
+                        ?React.createElement("img",{src:entry.thumbnail,alt:entry.name,style:{width:"100%",height:"100%",objectFit:"cover",display:"block",aspectRatio:"1 / 1"}})
                         :React.createElement("div",{style:{padding:12,textAlign:"center",fontSize:11,color:"#475569",lineHeight:1.5}},"정방형 배너 썸네일 없음")
-                    ),
-                    React.createElement("div",{style:{padding:"10px 10px 8px"}},
-                      React.createElement("div",{style:{fontSize:11,color:"#e2e8f0",fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},entry.name),
-                      React.createElement("div",{style:{fontSize:10,color:"#64748b",marginTop:4}},formatSnapshotSavedAt(entry.savedAt)),
-                      React.createElement("div",{style:{fontSize:10,color:"#64748b",marginTop:2}},entry.thumbRatio ? "정방형 썸네일 기준 " + entry.thumbRatio : "정방형 배너 없음")
-                    ),
-                    React.createElement("div",{style:{display:"flex",gap:6,padding:"0 10px 10px"}},
-                      React.createElement("button",{onClick:function(){handleLoadProjectSnapshot(entry);},style:{flex:1,padding:"6px 0",border:"none",borderRadius:8,background:"rgba(124,196,255,.14)",color:MD.primary,cursor:"pointer",fontSize:10,fontWeight:700,fontFamily:"inherit"}},"Load"),
-                      React.createElement("button",{onClick:function(){handleDeleteProjectSnapshot(entry.id);},style:{padding:"6px 10px",border:"1px solid rgba(255,123,114,.24)",borderRadius:8,background:"transparent",color:MD.danger,cursor:"pointer",fontSize:10,fontFamily:"inherit"}},"삭제")
                     )
                   );
                 })

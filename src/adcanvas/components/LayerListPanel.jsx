@@ -216,10 +216,6 @@ export default function LayerListPanel(props) {
     React.createElement(
       "div",
       {
-        onClick: function () {
-          if (isDisabled) return;
-          props.fileRef.current && props.fileRef.current.click();
-        },
         onDrop: function (event) {
           event.preventDefault();
           if (isDisabled) return;
@@ -231,9 +227,9 @@ export default function LayerListPanel(props) {
         style: {
           marginTop: 4,
           border: "1px dashed #333",
-          borderRadius: 4,
-          padding: props.imgLayer && props.imgLayer.src ? 4 : 12,
-          cursor: isDisabled ? "default" : "pointer",
+          borderRadius: 10,
+          padding: 10,
+          cursor: isDisabled ? "default" : "copy",
           textAlign: "center",
           background: "#0a0a0a",
           overflow: "hidden",
@@ -242,7 +238,7 @@ export default function LayerListPanel(props) {
       props.imgLayer && props.imgLayer.src
         ? React.createElement(
             "div",
-            { style: { position: "relative" } },
+            { style: { position: "relative", marginBottom: 10 } },
             React.createElement("img", {
               src: props.imgLayer.src,
               alt: "",
@@ -281,10 +277,64 @@ export default function LayerListPanel(props) {
           )
         : React.createElement(
             "div",
-            null,
-            React.createElement("div", { style: { fontSize: 14 } }, "PNG"),
-            React.createElement("div", { style: { color: "#444", fontSize: 9 } }, "Upload PNG")
+            { style: { marginBottom: 10 } },
+            React.createElement("div", { style: { fontSize: 14, color: MD.text } }, "PNG"),
+            React.createElement("div", { style: { color: "#64748b", fontSize: 10, lineHeight: 1.5, marginTop: 4 } }, "이미지를 드롭하거나 아래 버튼으로 추가"),
+            React.createElement("div", { style: { color: "#475569", fontSize: 9, marginTop: 4 } }, "Generate image는 연결 준비중")
           )
+      ,
+      React.createElement(
+        "div",
+        { style: { display: "flex", gap: 8 } },
+        React.createElement(
+          "button",
+          {
+            disabled: isDisabled,
+            onClick: function (event) {
+              event.stopPropagation();
+              if (isDisabled) return;
+              props.fileRef.current && props.fileRef.current.click();
+            },
+            style: {
+              flex: 1,
+              padding: "8px 10px",
+              borderRadius: 10,
+              border: "1px solid " + MD.line,
+              background: MD.surface2,
+              color: MD.text,
+              cursor: isDisabled ? "default" : "pointer",
+              fontSize: 11,
+              fontWeight: 700,
+              fontFamily: "inherit",
+            },
+          },
+          "Upload PNG"
+        ),
+        React.createElement(
+          "button",
+          {
+            disabled: isDisabled,
+            onClick: function (event) {
+              event.stopPropagation();
+              if (isDisabled || !props.onGenerateImage) return;
+              props.onGenerateImage();
+            },
+            style: {
+              flex: 1,
+              padding: "8px 10px",
+              borderRadius: 10,
+              border: "1px solid rgba(124,196,255,.22)",
+              background: "rgba(124,196,255,.1)",
+              color: MD.primary,
+              cursor: isDisabled ? "default" : "pointer",
+              fontSize: 11,
+              fontWeight: 700,
+              fontFamily: "inherit",
+            },
+          },
+          "Generate image"
+        )
+      )
     ),
     React.createElement("input", {
       ref: props.fileRef,
