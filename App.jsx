@@ -5,6 +5,7 @@ import ResizeHandles from "./src/adcanvas/components/ResizeHandles.jsx";
 import LayerListPanel from "./src/adcanvas/components/LayerListPanel.jsx";
 
 var SNAPSHOT_STORAGE_KEY = "banner-variation-editor:snapshots";
+var HISTORY_LIMIT = 50;
 
 var FONTS = [
   {family:"Noto Sans KR",weights:[300,400,500,700,800,900]},{family:"Nanum Gothic",weights:[400,700,800]},
@@ -102,22 +103,6 @@ function getMeasurementText(text){
   }
   return normalized || " ";
 }
-function readEditableText(node){
-  if(!node) return "";
-  function walk(current){
-    if(!current) return "";
-    if(current.nodeType===3) return current.nodeValue || "";
-    if(current.nodeName==="BR") return "\n";
-    var out="";
-    var children=Array.from(current.childNodes || []);
-    children.forEach(function(child,index){
-      out += walk(child);
-      if((child.nodeName==="DIV" || child.nodeName==="P") && index < children.length-1) out += "\n";
-    });
-    return out;
-  }
-  return walk(node).replace(/\u00A0/g," ");
-}
 function getAspectRatioLabel(w,h){
   var rw = Math.max(1, Math.round(w||1));
   var rh = Math.max(1, Math.round(h||1));
@@ -147,6 +132,12 @@ function formatSnapshotSavedAt(value){
   if(Number.isNaN(date.getTime())) return "";
   return formatSnapshotDefaultName(date);
 }
+function cloneHistoryState(state){
+  return JSON.parse(JSON.stringify(state));
+}
+function serializeHistoryState(state){
+  return JSON.stringify(state);
+}
 function getLayerDisplayName(layer){
   if(!layer) return "";
   if(layer.name) return layer.name;
@@ -155,7 +146,7 @@ function getLayerDisplayName(layer){
 }
 
 export default function App(){
-  var fileRef=useRef(null),assetFileRef=useRef(null),imgObjRef=useRef(null),dragRef=useRef(null),canvasRef=useRef(null),viewportRef=useRef(null),panRef=useRef(null),lastPointerRef=useRef(null),editingRef=useRef(null),editingDraftRef=useRef(""),isComposingRef=useRef(false);
+  var fileRef=useRef(null),imgObjRef=useRef(null),dragRef=useRef(null),canvasRef=useRef(null),viewportRef=useRef(null),panRef=useRef(null),lastPointerRef=useRef(null),editingRef=useRef(null),editingDraftRef=useRef(""),isComposingRef=useRef(false);
   var _bg=useState("#0f0f0f");var bgColor=_bg[0],setBgColor=_bg[1];
   var _z=useState(1);var zoom=_z[0],setZoom=_z[1];
   var _pan=useState({x:0,y:0});var pan=_pan[0],setPan=_pan[1];
@@ -188,6 +179,7 @@ export default function App(){
   
   var histRef = useRef({ past: [], future: [] });
   var stateRef = useRef({ layers: layers, overrides: overrides, bgColor: bgColor, boardDefaults: boardDefaults, customFonts: customFonts, boardSizeOverrides: boardSizeOverrides });
+  var lastHistorySerializedRef = useRef("");
   var _hc=useState(0); var setHistCount=_hc[1];
   
   useEffect(function() {
@@ -195,12 +187,14 @@ export default function App(){
   }, [layers, overrides, bgColor, boardDefaults, customFonts, boardSizeOverrides]);
 
   var saveHistory = useCallback(function() {
-    var st = JSON.parse(JSON.stringify(stateRef.current));
+    var serialized = serializeHistoryState(stateRef.current);
     var p = histRef.current.past;
-    if(p.length === 0 || JSON.stringify(p[p.length-1]) !== JSON.stringify(st)) {
+    if(serialized !== lastHistorySerializedRef.current) {
+      var st = JSON.parse(serialized);
       p.push(st);
-      if(p.length > 50) p.shift();
+      if(p.length > HISTORY_LIMIT) p.shift();
       histRef.current.future = [];
+      lastHistorySerializedRef.current = serialized;
       setHistCount(function(c){return c+1});
     }
   }, []);
@@ -209,13 +203,14 @@ export default function App(){
     var p = histRef.current.past;
     if (p.length === 0) return;
     var prev = p.pop();
-    histRef.current.future.push(JSON.parse(JSON.stringify(stateRef.current)));
+    histRef.current.future.push(cloneHistoryState(stateRef.current));
     setLayers(prev.layers);
     setOverrides(prev.overrides);
     setBgColor(prev.bgColor);
     setBoardDefaults(prev.boardDefaults || {});
     setCustomFonts(prev.customFonts || []);
     setBoardSizeOverrides(prev.boardSizeOverrides || {});
+    lastHistorySerializedRef.current = serializeHistoryState(prev);
     setHistCount(function(c){return c+1});
     setActiveEl(null); setSelectedEls([]);
     setCtxMenu(null);
@@ -225,13 +220,14 @@ export default function App(){
     var f = histRef.current.future;
     if (f.length === 0) return;
     var next = f.pop();
-    histRef.current.past.push(JSON.parse(JSON.stringify(stateRef.current)));
+    histRef.current.past.push(cloneHistoryState(stateRef.current));
     setLayers(next.layers);
     setOverrides(next.overrides);
     setBgColor(next.bgColor);
     setBoardDefaults(next.boardDefaults || {});
     setCustomFonts(next.customFonts || []);
     setBoardSizeOverrides(next.boardSizeOverrides || {});
+    lastHistorySerializedRef.current = serializeHistoryState(next);
     setHistCount(function(c){return c+1});
     setActiveEl(null); setSelectedEls([]);
     setCtxMenu(null);
@@ -288,6 +284,7 @@ export default function App(){
     setEditingTextId(null);
     setCtxMenu(null);
     histRef.current = { past: [], future: [] };
+    lastHistorySerializedRef.current = serializeHistoryState(snapshot);
     setHistCount(function(c){return c+1});
   }
 
@@ -916,9 +913,6 @@ export default function App(){
     if(e.button===1 || (e.button===0 && spaceHeld)){
       e.preventDefault();setIsPanning(true);panRef.current={type:"pan",mx:e.clientX,my:e.clientY,sx:pan.x,sy:pan.y,boost:1.22};
     }
-  }
-  function syncMainImage(src,w,h){
-    setLayers(function(p){return p.map(function(l){return l.type==="image"?Object.assign({},l,{src:src,imgW:w||0,imgH:h||0}):l})});
   }
   function handleFile(file){if(!file)return;saveHistory();var reader=new FileReader();reader.onload=function(ev){var img=new Image();img.onload=function(){imgObjRef.current=img;setLayers(function(p){return p.map(function(l){return l.type==="image"?Object.assign({},l,{src:ev.target.result,imgW:img.naturalWidth,imgH:img.naturalHeight}):l})})};img.src=ev.target.result};reader.readAsDataURL(file)}
   function getSnapshotResolvedSize(snapshot, size){

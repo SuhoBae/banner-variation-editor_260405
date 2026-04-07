@@ -276,3 +276,9 @@ Resolution: Renamed the header to `Banner Variation Editor` and removed the subt
 Situation: The bottom tray still focused on importing local or URL assets, but the user needed a project-oriented save and load workflow instead. The new requirement was to remove URL asset importing, preserve full working state snapshots, warn before overwriting the current unsaved canvas, and show a square-banner thumbnail in each saved entry.
 
 Resolution: Replaced the bottom tray with a localStorage-backed saved history panel. Saving now captures the current editor state bundle, defaults the save name to the current date and time when left blank, and stores a generated thumbnail from the first square artboard found in the saved selection set. Loading now always asks for confirmation with an explicit warning that unsaved canvas changes can disappear before applying the snapshot. The saved list surfaces the generated square thumbnail, saved timestamp, and load/delete actions.
+
+[2026-04-07] Dead-Code Cleanup and History Serialization Optimization
+
+Situation: As the editor accumulated rapid feature work, some legacy helpers and refs from older edit and asset flows remained in the file even after the UI moved on. The undo history path also re-serialized the full editor state multiple times per save, which added avoidable overhead in a single-file React app.
+
+Resolution: Removed unused legacy pieces such as the old editable-text parser helper, the stale asset tray ref, and an unreferenced image sync helper. Added a small history serialization layer so undo snapshots compare against one cached serialized string instead of repeatedly stringifying the same state tree multiple times per history save. This keeps the current feature set intact while trimming code noise and reducing unnecessary work in the hot undo/save path.
