@@ -1372,7 +1372,12 @@ return React.createElement("div",{className:"app-shell",style:{width:"100%",heig
           imgLayer:imgLayer,
           onUploadImageFile:handleFile,
           onRemoveImage:handleLayerPanelRemoveImage,
-          onAddTextLayer:handleAddTextLayer
+          onAddTextLayer:handleAddTextLayer,
+          onDeleteLayer:function(layerId){
+            if(!activeBoard || !layerId) return;
+            saveHistory();
+            removeLayerFromBoard(activeBoard, layerId);
+          }
         }),
         React.createElement("div",{style:{padding:10,borderBottom:"1px solid #1a1a1a"}},
           React.createElement("div",{style:sT},"🎨 캔버스 배경"),
@@ -1572,8 +1577,8 @@ return React.createElement("div",{className:"app-shell",style:{width:"100%",heig
                   React.createElement("button",{onClick:handleAddCustomFont,style:{padding:"3px 8px",background:"#00d4ff",color:"#000",border:"none",borderRadius:3,cursor:"pointer",fontSize:10,fontWeight:"bold"}},"추가")
                 ),
                 React.createElement("div",{style:{display:"flex",gap:6,marginBottom:4}},
-                  React.createElement("div",{style:{flex:1}},React.createElement("div",{style:{fontSize:9,color:"#444",marginBottom:2}},"Size"),React.createElement("input",{type:"number",min:6,max:300,value:(function(){var er=getElRect(activeBoard,activeLayerObj);return Math.round(er.fs)})(),onFocus:saveHistory,onChange:function(e){setOv(activeBoard,activeEl,{fs:clamp(+e.target.value||0,6,300)})},style:iS})),
-                  React.createElement("div",{style:{flex:1}},React.createElement("div",{style:{fontSize:9,color:"#444",marginBottom:2}},"Wt"),React.createElement("select",{value:activeLayerObj.weight,onFocus:saveHistory,onChange:function(e){setBoardLayerProp(activeBoard,activeEl,"weight",+e.target.value)},style:iS},(allFontsList.find(function(f){return f.family===activeLayerObj.font})||{weights:[400,700]}).weights.map(function(w){return React.createElement("option",{key:w,value:w},w)})))
+                  React.createElement("div",{style:{flex:1}},React.createElement("div",{style:{fontSize:9,color:"#444",marginBottom:2}},"Size (px)"),React.createElement("input",{type:"number",min:6,max:300,value:(function(){var er=getElRect(activeBoard,activeLayerObj);return Math.round(er.fs)})(),onFocus:saveHistory,onChange:function(e){setOv(activeBoard,activeEl,{fs:clamp(+e.target.value||0,6,300)})},style:iS})),
+                  React.createElement("div",{style:{flex:1}},React.createElement("div",{style:{fontSize:9,color:"#444",marginBottom:2}},"Weight (100-900)"),React.createElement("select",{value:activeLayerObj.weight,onFocus:saveHistory,onChange:function(e){setBoardLayerProp(activeBoard,activeEl,"weight",+e.target.value)},style:iS},(allFontsList.find(function(f){return f.family===activeLayerObj.font})||{weights:[400,700]}).weights.map(function(w){return React.createElement("option",{key:w,value:w},w)})))
                 ),
                 React.createElement("div",{style:{marginBottom:4}},React.createElement("div",{style:{display:"flex",justifyContent:"space-between"}},React.createElement("span",{style:{fontSize:9,color:"#444"}},"자간"),React.createElement("span",{style:{fontSize:9,color:"#666"}},trackingEmToPercent(activeLayerObj.ls)+"%")),React.createElement("input",{type:"range",min:-30,max:30,step:1,value:trackingEmToPercent(activeLayerObj.ls),onMouseDown:saveHistory,onChange:function(e){setBoardLayerProp(activeBoard,activeEl,"ls",trackingPercentToEm(+e.target.value))},style:{width:"100%",accentColor:"#00d4ff"}})),
                 React.createElement("div",{style:{marginBottom:4}},React.createElement("div",{style:{display:"flex",justifyContent:"space-between"}},React.createElement("span",{style:{fontSize:9,color:"#444"}},"행간"),React.createElement("span",{style:{fontSize:9,color:"#666"}},lineHeightValueToPercent(activeLayerObj.lh||DEFAULT_LINE_HEIGHT)+"%")),React.createElement("input",{type:"range",min:80,max:260,step:5,value:lineHeightValueToPercent(activeLayerObj.lh||DEFAULT_LINE_HEIGHT),onMouseDown:saveHistory,onChange:function(e){setBoardLayerProp(activeBoard,activeEl,"lh",lineHeightPercentToValue(+e.target.value))},style:{width:"100%",accentColor:"#00d4ff"}})),
@@ -1594,11 +1599,8 @@ return React.createElement("div",{className:"app-shell",style:{width:"100%",heig
                 ),
                 React.createElement("div",{style:{padding:5,background:"#0a0a0a",borderRadius:3,border:"1px solid #1a1a1a",display:"flex",justifyContent:"space-between",alignItems:"center"}},React.createElement("span",{style:{fontSize:9,color:"#444"}},"대비율"),React.createElement("span",{style:{fontSize:10,fontWeight:700,color:crVal>=4.5?"#4ade80":crVal>=3?"#fbbf24":"#ef4444"}},crVal.toFixed(1)+":1 "+(crVal>=4.5?"✅":crVal>=3?"⚠️":"❌")))
               ),
-              React.createElement("div",{style:{padding:10}},
-                React.createElement("button",{onClick:function(){if(activeLayerObj){
-                  saveHistory();
-                  removeLayerFromBoard(activeBoard, activeEl);
-                }},style:{width:"100%",padding:"8px 10px",border:"1px solid "+MD.dangerSoft,borderRadius:12,background:MD.dangerSoft,color:MD.danger,cursor:"pointer",fontSize:11,fontWeight:700,fontFamily:"inherit"}},"이 보드에서 레이어 삭제")
+              React.createElement("div",{style:{padding:"0 10px 10px",fontSize:10,color:MD.muted,lineHeight:1.6}},
+                "레이어 삭제는 좌측 레이어 목록의 휴지통 아이콘에서 할 수 있습니다."
               )
             )
           : (!activeBoard ? React.createElement("div",{style:{padding:16,margin:12,border:"1px dashed "+MD.line,borderRadius:16,background:"rgba(255,255,255,.02)",color:MD.muted,fontSize:11,lineHeight:1.7,textAlign:"center",marginTop:20,opacity:.74}},

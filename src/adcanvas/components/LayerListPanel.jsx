@@ -181,6 +181,35 @@ export default function LayerListPanel(props) {
             },
             subLabel
           )
+        ),
+        React.createElement(
+          "button",
+          {
+            disabled: isDisabled,
+            onClick: function (event) {
+              event.stopPropagation();
+              if (isDisabled || !props.onDeleteLayer) return;
+              props.onDeleteLayer(layer.id);
+            },
+            title: "이 보드에서 레이어 삭제",
+            style: {
+              width: 22,
+              height: 22,
+              flexShrink: 0,
+              borderRadius: 8,
+              border: "1px solid rgba(255,123,114,.22)",
+              background: "rgba(255,123,114,.08)",
+              color: MD.danger,
+              cursor: isDisabled ? "default" : "pointer",
+              fontSize: 11,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              opacity: isDisabled ? 0.4 : 1,
+              fontFamily: "inherit",
+            },
+          },
+          "🗑"
         )
       );
     }),
