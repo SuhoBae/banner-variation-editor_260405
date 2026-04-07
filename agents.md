@@ -193,6 +193,12 @@ Situation: Panels whose controls depend on an upper-level selection still looked
 
 Resolution: The layer panel now accepts an explicit disabled state and visually deactivates itself while also blocking selection, visibility toggles, uploads, and add-layer actions until an artboard is selected. The right properties area also shows a disabled-state placeholder when no artboard context exists, making the selection hierarchy clearer.
 
+[2026-04-07] Artboard Ratio Input, Numeric Draft Handling, and First-Enter Textarea Fix
+
+Situation: Direct artboard size inputs behaved poorly when entering multiple digits because controlled numeric fields were reformatting too aggressively. The user also needed aspect-ratio-based resizing, background canvas clicks to clear artboard selection, and the first Enter in inline text edit still caused the first line to jump upward before the box settled.
+
+Resolution: `NumberInput` now keeps a local draft string so multi-digit and decimal input can be typed naturally before normalization. Active artboards now expose a ratio control derived from width/height, and ratio edits update width from the current height baseline. Empty canvas clicks clear the current artboard selection. For inline text editing, the textarea overlay now synchronizes its own height from `scrollHeight` during focus, change, composition end, and Enter, which stabilizes the first line break behavior.
+
 [2026-04-06] line-height 실측 반영과 레이어명 편집 도입
 
 상황: 텍스트 레이어 선택 UI가 줄 수는 따라가더라도 `line-height` 값과 실제 줄바꿈 높이를 충분히 반영하지 못했고, 레이어 이동은 선택 스트로크 인식 영역이 좁아 잡기 어려웠음. 또한 좌측 레이어 패널에서 레이어명을 직접 정리할 수 없어 편집 캔버스와 목록 간의 맥락 연결이 약했음.

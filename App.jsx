@@ -108,6 +108,13 @@ function readEditableText(node){
   }
   return walk(node).replace(/\u00A0/g," ");
 }
+function getAspectRatioLabel(w,h){
+  var rw = Math.max(1, Math.round(w||1));
+  var rh = Math.max(1, Math.round(h||1));
+  function gcd(a,b){ return b ? gcd(b, a % b) : a; }
+  var div = gcd(rw, rh);
+  return Math.round(rw / div) + ":" + Math.round(rh / div);
+}
 function getLayerDisplayName(layer){
   if(!layer) return "";
   if(layer.name) return layer.name;
@@ -224,6 +231,7 @@ export default function App(){
     var el = editingRef.current;
     el.focus();
     el.setSelectionRange(nextText.length,nextText.length);
+    requestAnimationFrame(function(){ syncEditingTextarea(el); });
   }, [editingTextId, activeBoard, activeEl, layers, overrides, boardDefaults]);
 
   useEffect(function(){
@@ -369,6 +377,12 @@ export default function App(){
       else next[sid] = nextBoard;
       return next;
     });
+  }
+  function setBoardAspectRatio(sid, ratio){
+    var currentSize = getSizeById(sid);
+    if(!currentSize) return;
+    var nextRatio = clamp(+ratio || 0, 0.1, 10);
+    setBoardSizeProp(sid, "w", Math.round(currentSize.h * nextRatio));
   }
   function clearLayerSelection(){
     setActiveEl(null);
@@ -801,6 +815,15 @@ export default function App(){
   function startPan(e){
     var tag = e.target.tagName;
     if(tag==="INPUT" || tag==="TEXTAREA" || tag==="SELECT") return;
+    var boardTarget = e.target.closest ? e.target.closest("[data-bid]") : null;
+    if(e.button===0 && !spaceHeld && !boardTarget){
+      setActiveBoard(null);
+      setActiveEl(null);
+      setSelectedEls([]);
+      setEditingTextId(null);
+      setCtxMenu(null);
+      return;
+    }
     // 휠클릭(1) 이거나, 스페이스바+좌클릭(0) 인 경우에만 패닝 시작
     if(e.button===1 || (e.button===0 && spaceHeld)){
       e.preventDefault();setIsPanning(true);panRef.current={type:"pan",mx:e.clientX,my:e.clientY,sx:pan.x,sy:pan.y,boost:1.22};
@@ -990,6 +1013,13 @@ export default function App(){
   function addCustom(){if(!customForm.name||!customForm.w||!customForm.h)return;var id="c"+Date.now();setCustomSizes(function(p){return p.concat([{id:id,w:+customForm.w,h:+customForm.h,label:customForm.name,safe:{t:+customForm.st,b:+customForm.sb,l:+customForm.sl,r:+customForm.sr,pct:false}}])});setSelIds(function(p){return p.concat([id])});setCustomForm({name:"",w:"",h:"",st:"0",sb:"0",sl:"0",sr:"0"});setShowCF(false)}
   var crVal=activeLayerObj&&activeLayerObj.type==="text"?contrast(activeLayerObj.color,bgColor):0;
   var boardScale=.25;
+  function syncEditingTextarea(node){
+    if(!node) return;
+    node.style.height = "0px";
+    node.style.height = Math.max(node.scrollHeight, 1) + "px";
+    node.scrollLeft = 0;
+    node.scrollTop = 0;
+  }
 
   function renderBoard(sz){
     var dw=sz.w*boardScale,dh=sz.h*boardScale;var sa=getSafe(sz);var isAct=activeBoard===sz.id;var isExp=!!exportChecked[sz.id];var lo=computeLayout(sz.w,sz.h);var mutated=boardHasChanges(sz.id);
@@ -1042,7 +1072,7 @@ export default function App(){
               ),
               isSel&&React.createElement("div",{onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")},style:{position:"absolute",top:-8,left:0,fontSize:labelFontSize,color:MD.primary,lineHeight:1,pointerEvents:"auto",whiteSpace:"nowrap",fontWeight:700,letterSpacing:".02em",cursor:spaceHeld?"grab":"move"}},getLayerDisplayName(layer)),
               isEditingText && !isCta
-                ?React.createElement("textarea",{ref:editingRef,id:"layer-content-"+sz.id+"-"+layer.id,value:editingDraftValue,spellCheck:false,wrap:textUsesManualBox?"soft":"off",onClick:function(e){e.stopPropagation();},onMouseDown:function(e){e.stopPropagation();},onCompositionStart:function(){isComposingRef.current=true;},onCompositionEnd:function(e){isComposingRef.current=false;e.target.scrollLeft=0;e.target.scrollTop=0;requestAnimationFrame(function(){setTick(function(c){return c+1});});},onChange:function(e){editingDraftRef.current=e.target.value;setEditingDraftValue(e.target.value);e.target.scrollLeft=0;e.target.scrollTop=0;requestAnimationFrame(function(){setTick(function(c){return c+1});});},onBlur:function(){if(isComposingRef.current) return; commitEditingText(sz.id,layer.id,false);},onKeyDown:function(e){if(e.key==="Escape"){e.preventDefault();commitEditingText(sz.id,layer.id,true);e.currentTarget.blur();}},style:{position:"absolute",top:"-0.12em",left:0,whiteSpace:textUsesManualBox?"pre-wrap":"pre",wordBreak:"keep-all",display:"block",width:"100%",minWidth:"100%",maxWidth:"100%",height:"calc(100% + 0.24em)",padding:"0.12em 0",margin:0,border:"none",background:"transparent",outline:"none",overflow:"hidden",resize:"none",cursor:"text",color:"inherit",font:"inherit",letterSpacing:"inherit",lineHeight:"inherit",textAlign:layer.align,boxSizing:"border-box",scrollbarWidth:"none",msOverflowStyle:"none"}}) 
+                ?React.createElement("textarea",{ref:editingRef,id:"layer-content-"+sz.id+"-"+layer.id,value:editingDraftValue,spellCheck:false,wrap:textUsesManualBox?"soft":"off",onClick:function(e){e.stopPropagation();},onMouseDown:function(e){e.stopPropagation();},onCompositionStart:function(){isComposingRef.current=true;},onCompositionEnd:function(e){isComposingRef.current=false;requestAnimationFrame(function(){syncEditingTextarea(e.target);setTick(function(c){return c+1});});},onChange:function(e){editingDraftRef.current=e.target.value;setEditingDraftValue(e.target.value);requestAnimationFrame(function(){syncEditingTextarea(e.target);setTick(function(c){return c+1});});},onBlur:function(){if(isComposingRef.current) return; commitEditingText(sz.id,layer.id,false);},onKeyDown:function(e){if(e.key==="Enter"){requestAnimationFrame(function(){syncEditingTextarea(e.currentTarget);});} if(e.key==="Escape"){e.preventDefault();commitEditingText(sz.id,layer.id,true);e.currentTarget.blur();}},style:{position:"absolute",top:0,left:0,whiteSpace:textUsesManualBox?"pre-wrap":"pre",wordBreak:"keep-all",display:"block",width:"100%",minWidth:"100%",maxWidth:"100%",height:"100%",minHeight:"100%",padding:0,margin:0,border:"none",background:"transparent",outline:"none",overflow:"hidden",resize:"none",cursor:"text",color:"inherit",font:"inherit",letterSpacing:"inherit",lineHeight:"inherit",textAlign:layer.align,boxSizing:"border-box",scrollbarWidth:"none",msOverflowStyle:"none"}}) 
                 :isCta&&layer.bg
                   ?React.createElement("span",{id:"layer-content-"+sz.id+"-"+layer.id,style:{background:layer.bg,padding:(dfs*0.2)+"px "+(dfs*0.3)+"px",borderRadius:999,whiteSpace:"nowrap",display:"inline-flex",alignItems:"center",justifyContent:"center",lineHeight:1,boxShadow:"0 1px 3px rgba(0,0,0,.12)"}} ,layer.content)
                   :React.createElement("span",{id:"layer-content-"+sz.id+"-"+layer.id,style:{position:"absolute",top:0,left:0,whiteSpace:textUsesManualBox?"pre-wrap":"pre",wordBreak:"keep-all",display:"block",width:"100%",maxWidth:"100%",overflow:"visible"}},layer.content),
@@ -1228,9 +1258,10 @@ return React.createElement("div",{className:"app-shell",style:{width:"100%",heig
                 React.createElement("div",{style:{fontSize:11, color:"#ccc", marginBottom:10}}, activeSize.w+"×"+activeSize.h+" "+(activeSize.label||"")),
                 React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:2,marginBottom:10,minWidth:0}},
                   React.createElement(NumberInput,{label:"W",value:activeSize.w||0,onFocus:saveHistory,onChange:function(v){setBoardSizeProp(activeBoard,"w",v)},min:50,max:4000,step:10,unit:"px"}),
-                  React.createElement(NumberInput,{label:"H",value:activeSize.h||0,onFocus:saveHistory,onChange:function(v){setBoardSizeProp(activeBoard,"h",v)},min:50,max:4000,step:10,unit:"px"})
+                  React.createElement(NumberInput,{label:"H",value:activeSize.h||0,onFocus:saveHistory,onChange:function(v){setBoardSizeProp(activeBoard,"h",v)},min:50,max:4000,step:10,unit:"px"}),
+                  React.createElement(NumberInput,{label:"Ratio",value:(activeSize.w&&activeSize.h)?(activeSize.w/activeSize.h):1,onFocus:saveHistory,onChange:function(v){setBoardAspectRatio(activeBoard,v)},min:0.1,max:10,step:0.01,unit:"x"})
                 ),
-                React.createElement("div",{style:{fontSize:8,color:"#666",marginTop:-4,marginBottom:10}},"현재 아트보드만 숫자 입력으로 크기를 조정합니다.")
+                React.createElement("div",{style:{fontSize:8,color:"#666",marginTop:-4,marginBottom:10}},"현재 비율 "+getAspectRatioLabel(activeSize.w||1, activeSize.h||1)+" · 비율 입력은 현재 높이를 기준으로 폭을 갱신합니다.")
               );
             })(),
             React.createElement("button",{onClick:function(){
