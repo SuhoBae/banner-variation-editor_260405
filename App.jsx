@@ -68,7 +68,7 @@ var MD = {
   dangerSoft:"rgba(255,123,114,.14)",
   shadow:"0 1px 2px rgba(0,0,0,.35), 0 12px 28px rgba(0,0,0,.28)"
 };
-var iS={background:MD.surface2,border:"1px solid "+MD.line,borderRadius:12,padding:"8px 10px",color:MD.text,fontSize:12,fontFamily:"Pretendard,Roboto,'Noto Sans KR',sans-serif",width:"100%",boxSizing:"border-box",boxShadow:"inset 0 1px 0 rgba(255,255,255,.03)"};
+var iS={background:MD.surface2,border:"1px solid "+MD.line,borderRadius:12,padding:"8px 10px",color:MD.text,fontSize:12,fontFamily:"Pretendard,'Noto Sans KR',Roboto,sans-serif",width:"100%",boxSizing:"border-box",boxShadow:"inset 0 1px 0 rgba(255,255,255,.03)"};
 var sT={fontSize:11,color:MD.muted,textTransform:"uppercase",letterSpacing:".08em",marginBottom:10,fontWeight:700};
 var hSt={background:MD.primary,position:"absolute",zIndex:30,boxShadow:"0 1px 3px rgba(26,115,232,.35)"};
 var DEFAULT_LINE_HEIGHT = 1.4;
@@ -166,9 +166,9 @@ export default function App(){
 
   var _layers=useState([
     {id:"img1",type:"image",label:"메인 비주얼",name:"메인 비주얼",src:null,imgW:0,imgH:0,visible:true,zIndex:0},
-    {id:"l1",type:"text",name:"메인 카피",role:"headline",content:"여름맞이 최대 50% 할인",font:"Noto Sans KR",size:48,weight:800,ls:-.02,lh:1.4,color:"#FFFFFF",align:"center",visible:true,zIndex:1},
-    {id:"l2",type:"text",name:"보조 카피",role:"subheadline",content:"LG 베스트샵 전 제품",font:"Noto Sans KR",size:24,weight:500,ls:0,lh:1.4,color:"#CCCCCC",align:"center",visible:true,zIndex:2},
-    {id:"l3",type:"text",name:"CTA 버튼",role:"cta",content:"자세히 보기",font:"Noto Sans KR",size:20,weight:700,ls:.02,lh:1.4,color:"#FFFFFF",align:"center",visible:true,bg:"#A50034",zIndex:3},
+    {id:"l1",type:"text",name:"메인 카피",role:"headline",content:"여름맞이 최대 50% 할인",font:"Pretendard",size:48,weight:800,ls:-.02,lh:1.4,color:"#FFFFFF",align:"center",visible:true,zIndex:1},
+    {id:"l2",type:"text",name:"보조 카피",role:"subheadline",content:"LG 베스트샵 전 제품",font:"Pretendard",size:24,weight:500,ls:0,lh:1.4,color:"#CCCCCC",align:"center",visible:true,zIndex:2},
+    {id:"l3",type:"text",name:"CTA 버튼",role:"cta",content:"자세히 보기",font:"Pretendard",size:20,weight:700,ls:.02,lh:1.4,color:"#FFFFFF",align:"center",visible:true,bg:"#A50034",zIndex:3},
   ]);var layers=_layers[0],setLayers=_layers[1];
   
   var _ov=useState({});var overrides=_ov[0],setOverrides=_ov[1];
@@ -567,7 +567,7 @@ export default function App(){
         name:"새 텍스트 레이어",
         role:"headline",
         content:"새 텍스트",
-        font:"Noto Sans KR",
+        font:"Pretendard",
         size:24,
         weight:700,
         ls:0,
@@ -1085,7 +1085,7 @@ export default function App(){
         }
         if(layer.type==="text"){
           var fs=er.fs;if(fs<=0)return Promise.resolve();
-          ctx.font=layer.weight+" "+fs+'px "'+layer.font+'","Noto Sans KR",sans-serif';
+      ctx.font=layer.weight+" "+fs+'px "'+layer.font+'","Pretendard","Noto Sans KR",sans-serif';
           var tx,ty=dy+dh/2;
           if(layer.align==="center"){ctx.textAlign="center";tx=dx+dw/2}else if(layer.align==="right"){ctx.textAlign="right";tx=dx+dw}else{ctx.textAlign="left";tx=dx}
           if(layer.role==="cta"&&layer.bg){
@@ -1331,7 +1331,7 @@ export default function App(){
     );
   }
 
-return React.createElement("div",{className:"app-shell",style:{width:"100%",height:"100vh",maxHeight:"100vh",background:"linear-gradient(180deg,#0b1017 0%, #0f1720 100%)",color:MD.text,fontFamily:"Roboto,'Noto Sans KR',sans-serif",fontSize:12,display:"flex",flexDirection:"column",overflow:"hidden"}},
+return React.createElement("div",{className:"app-shell",style:{width:"100%",height:"100vh",maxHeight:"100vh",background:"linear-gradient(180deg,#0b1017 0%, #0f1720 100%)",color:MD.text,fontFamily:"Pretendard,'Noto Sans KR',Roboto,sans-serif",fontSize:12,display:"flex",flexDirection:"column",overflow:"hidden"}},
 
     /* HEADER */
     React.createElement("div",{
@@ -1434,7 +1434,7 @@ return React.createElement("div",{className:"app-shell",style:{width:"100%",heig
           visSizes.length===0?React.createElement("div",{style:{color:"#333",fontSize:13,padding:40}},"← 좌측에서 사이즈를 선택하세요"):visSizes.map(function(s){return renderBoard(s)})
         ),
         /* Context Menu (우클릭 메뉴) */
-        ctxMenu&&React.createElement("div",{style:{position:"fixed",left:ctxMenu.x,top:ctxMenu.y,background:MD.surface,border:"1px solid "+MD.line,borderRadius:16,padding:6,zIndex:9999,boxShadow:MD.shadow,width:190,fontFamily:"Roboto,'Noto Sans KR',sans-serif"}},
+        ctxMenu&&React.createElement("div",{style:{position:"fixed",left:ctxMenu.x,top:ctxMenu.y,background:MD.surface,border:"1px solid "+MD.line,borderRadius:16,padding:6,zIndex:9999,boxShadow:MD.shadow,width:190,fontFamily:"Pretendard,'Noto Sans KR',Roboto,sans-serif"}},
           ctxMenu.lid ? React.createElement(React.Fragment,null,
             React.createElement("div",{className:"ctx-item",onClick:function(){
               saveHistory(); setLayers(function(prev){var idx=prev.findIndex(function(l){return l.id===ctxMenu.lid});if(idx<0)return prev;var n=prev.slice();n[idx]=Object.assign({},n[idx],{zIndex:n[idx].zIndex+1});return n}); setCtxMenu(null);

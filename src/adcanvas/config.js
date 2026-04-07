@@ -1,4 +1,5 @@
 export const FONTS = [
+  { family: "Pretendard", weights: [300, 400, 500, 600, 700, 800, 900] },
   { family: "Noto Sans KR", weights: [300, 400, 500, 700, 800, 900] },
   { family: "Nanum Gothic", weights: [400, 700, 800] },
   { family: "Noto Serif KR", weights: [300, 400, 500, 700, 900] },
@@ -79,7 +80,7 @@ export const iS = {
   padding: "8px 10px",
   color: MD.text,
   fontSize: 12,
-  fontFamily: "Roboto,'Noto Sans KR',sans-serif",
+  fontFamily: "Pretendard,'Noto Sans KR',Roboto,sans-serif",
   width: "100%",
   boxSizing: "border-box",
   boxShadow: "inset 0 1px 0 rgba(255,255,255,.03)",
