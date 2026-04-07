@@ -115,6 +115,13 @@ function getAspectRatioLabel(w,h){
   var div = gcd(rw, rh);
   return Math.round(rw / div) + ":" + Math.round(rh / div);
 }
+function getAspectRatioParts(w,h){
+  var rw = Math.max(1, Math.round(w||1));
+  var rh = Math.max(1, Math.round(h||1));
+  function gcd(a,b){ return b ? gcd(b, a % b) : a; }
+  var div = gcd(rw, rh);
+  return { w: Math.round(rw / div), h: Math.round(rh / div) };
+}
 function getLayerDisplayName(layer){
   if(!layer) return "";
   if(layer.name) return layer.name;
@@ -378,11 +385,12 @@ export default function App(){
       return next;
     });
   }
-  function setBoardAspectRatio(sid, ratio){
+  function setBoardAspectParts(sid, ratioW, ratioH){
     var currentSize = getSizeById(sid);
     if(!currentSize) return;
-    var nextRatio = clamp(+ratio || 0, 0.1, 10);
-    setBoardSizeProp(sid, "w", Math.round(currentSize.h * nextRatio));
+    var nextRatioW = Math.round(clamp(+ratioW || 0, 1, 1000));
+    var nextRatioH = Math.round(clamp(+ratioH || 0, 1, 1000));
+    setBoardSizeProp(sid, "w", Math.round(currentSize.h * (nextRatioW / nextRatioH)));
   }
   function clearLayerSelection(){
     setActiveEl(null);
@@ -1254,14 +1262,20 @@ return React.createElement("div",{className:"app-shell",style:{width:"100%",heig
             React.createElement("div",{style:sT},"📝 아트보드 설정"),
             (function(){
               var activeSize = getSizeById(activeBoard) || {};
+              var ratioParts = getAspectRatioParts(activeSize.w||1, activeSize.h||1);
               return React.createElement(React.Fragment,null,
-                React.createElement("div",{style:{fontSize:11, color:"#ccc", marginBottom:10}}, activeSize.w+"×"+activeSize.h+" "+(activeSize.label||"")),
+                React.createElement("div",{style:{fontSize:11, color:"#ccc", marginBottom:10}}, activeSize.w+"×"+activeSize.h+" "+(activeSize.label||"")+" "+getAspectRatioLabel(activeSize.w||1, activeSize.h||1)),
                 React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:2,marginBottom:10,minWidth:0}},
                   React.createElement(NumberInput,{label:"W",value:activeSize.w||0,onFocus:saveHistory,onChange:function(v){setBoardSizeProp(activeBoard,"w",v)},min:50,max:4000,step:10,unit:"px"}),
                   React.createElement(NumberInput,{label:"H",value:activeSize.h||0,onFocus:saveHistory,onChange:function(v){setBoardSizeProp(activeBoard,"h",v)},min:50,max:4000,step:10,unit:"px"}),
-                  React.createElement(NumberInput,{label:"Ratio",value:(activeSize.w&&activeSize.h)?(activeSize.w/activeSize.h):1,onFocus:saveHistory,onChange:function(v){setBoardAspectRatio(activeBoard,v)},min:0.1,max:10,step:0.01,unit:"x"})
+                  React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,marginBottom:5}},
+                    React.createElement("span",{style:{fontSize:10,color:MD.muted,width:42,flexShrink:0}},"비율"),
+                    React.createElement("input",{type:"number",min:1,max:1000,step:1,value:ratioParts.w,onFocus:saveHistory,onChange:function(e){setBoardAspectParts(activeBoard,+e.target.value,ratioParts.h)},style:Object.assign({},iS,{flex:1,minWidth:0,width:0,paddingRight:8,appearance:"textfield",MozAppearance:"textfield",WebkitAppearance:"none",borderRadius:12,lineHeight:1.2})}),
+                    React.createElement("span",{style:{fontSize:12,color:MD.muted,flexShrink:0}} ,":"),
+                    React.createElement("input",{type:"number",min:1,max:1000,step:1,value:ratioParts.h,onFocus:saveHistory,onChange:function(e){setBoardAspectParts(activeBoard,ratioParts.w,+e.target.value)},style:Object.assign({},iS,{flex:1,minWidth:0,width:0,paddingRight:8,appearance:"textfield",MozAppearance:"textfield",WebkitAppearance:"none",borderRadius:12,lineHeight:1.2})})
+                  )
                 ),
-                React.createElement("div",{style:{fontSize:8,color:"#666",marginTop:-4,marginBottom:10}},"현재 비율 "+getAspectRatioLabel(activeSize.w||1, activeSize.h||1)+" · 비율 입력은 현재 높이를 기준으로 폭을 갱신합니다.")
+                React.createElement("div",{style:{fontSize:8,color:"#666",marginTop:-4,marginBottom:10}},"비율 조절은 현재 높이를 기준으로 폭을 갱신합니다.")
               );
             })(),
             React.createElement("button",{onClick:function(){

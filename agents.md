@@ -199,6 +199,12 @@ Situation: Direct artboard size inputs behaved poorly when entering multiple dig
 
 Resolution: `NumberInput` now keeps a local draft string so multi-digit and decimal input can be typed naturally before normalization. Active artboards now expose a ratio control derived from width/height, and ratio edits update width from the current height baseline. Empty canvas clicks clear the current artboard selection. For inline text editing, the textarea overlay now synchronizes its own height from `scrollHeight` during focus, change, composition end, and Enter, which stabilizes the first line break behavior.
 
+[2026-04-07] Ratio UI Changed from Decimal to Width:Height Controls
+
+Situation: A decimal ratio field like `0.1` was technically correct but not designer-friendly. The user wanted to work with ratio in the same form it is mentally modeled, such as `9:16`.
+
+Resolution: Replaced the single decimal ratio input with two numeric fields representing horizontal and vertical ratio parts. The visible artboard summary now also appends the reduced ratio label, and changing either side updates the active board width from the current height baseline.
+
 [2026-04-06] line-height 실측 반영과 레이어명 편집 도입
 
 상황: 텍스트 레이어 선택 UI가 줄 수는 따라가더라도 `line-height` 값과 실제 줄바꿈 높이를 충분히 반영하지 못했고, 레이어 이동은 선택 스트로크 인식 영역이 좁아 잡기 어려웠음. 또한 좌측 레이어 패널에서 레이어명을 직접 정리할 수 없어 편집 캔버스와 목록 간의 맥락 연결이 약했음.
