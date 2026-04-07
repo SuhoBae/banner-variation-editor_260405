@@ -280,7 +280,7 @@ export default function LayerListPanel(props) {
             { style: { marginBottom: 10 } },
             React.createElement("div", { style: { fontSize: 14, color: MD.text } }, "PNG"),
             React.createElement("div", { style: { color: "#64748b", fontSize: 10, lineHeight: 1.5, marginTop: 4 } }, "이미지를 드롭하거나 아래 버튼으로 추가"),
-            React.createElement("div", { style: { color: "#475569", fontSize: 9, marginTop: 4 } }, "Generate image는 연결 준비중")
+            React.createElement("div", { style: { color: "#475569", fontSize: 9, marginTop: 4, lineHeight: 1.5 } }, props.imageStatusText || "이미지 생성 준비됨")
           )
       ,
       React.createElement(
@@ -313,10 +313,10 @@ export default function LayerListPanel(props) {
         React.createElement(
           "button",
           {
-            disabled: isDisabled,
+            disabled: isDisabled || props.imageGenerateBusy,
             onClick: function (event) {
               event.stopPropagation();
-              if (isDisabled || !props.onGenerateImage) return;
+              if (isDisabled || props.imageGenerateBusy || !props.onGenerateImage) return;
               props.onGenerateImage();
             },
             style: {
@@ -326,13 +326,14 @@ export default function LayerListPanel(props) {
               border: "1px solid rgba(124,196,255,.22)",
               background: "rgba(124,196,255,.1)",
               color: MD.primary,
-              cursor: isDisabled ? "default" : "pointer",
+              cursor: isDisabled || props.imageGenerateBusy ? "default" : "pointer",
               fontSize: 11,
               fontWeight: 700,
               fontFamily: "inherit",
+              opacity: isDisabled || props.imageGenerateBusy ? 0.55 : 1,
             },
           },
-          "Generate image"
+          props.imageGenerateBusy ? "Generating..." : "Generate image"
         )
       )
     ),

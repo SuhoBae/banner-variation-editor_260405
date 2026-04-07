@@ -181,6 +181,8 @@ export default function App(){
   var _saveName=useState(""); var saveNameDraft=_saveName[0],setSaveNameDraft=_saveName[1];
   var _saveMsg=useState("현재 작업 상태를 저장하고 다시 불러올 수 있습니다."); var saveMessage=_saveMsg[0],setSaveMessage=_saveMsg[1];
   var _saveBusy=useState(false); var saveBusy=_saveBusy[0],setSaveBusy=_saveBusy[1];
+  var _imgGenBusy=useState(false); var imageGenerateBusy=_imgGenBusy[0],setImageGenerateBusy=_imgGenBusy[1];
+  var _imgGenStatus=useState("Generate image를 누르면 현재 보드 비율에 맞춰 이미지를 생성합니다."); var imageGenerateStatus=_imgGenStatus[0],setImageGenerateStatus=_imgGenStatus[1];
   
   var _sumId=useState(null); var summarizingId=_sumId[0], setSummarizingId=_sumId[1]; // 에이전트 요약 상태
   
@@ -531,12 +533,60 @@ export default function App(){
   function handleLayerPanelRemoveImage(){
     if(!imgLayer) return;
     saveHistory();
-    updateLayer(imgLayer.id,"src",null);
+    setLayers(function(prev){
+      return prev.map(function(layer){
+        if(layer.type!=="image") return layer;
+        return Object.assign({}, layer, { src:null, imgW:0, imgH:0 });
+      });
+    });
     imgObjRef.current = null;
   }
-  function handleGenerateImageRequest(){
-    if(typeof window !== "undefined" && typeof window.alert === "function"){
-      window.alert("이미지 영역 일부를 생성 이미지로 채우는 기능은 구현 가능합니다. 다만 현재 앱에는 생성 모델/API 백엔드가 아직 연결되어 있지 않아, 지금 단계에서는 버튼과 워크플로만 준비해두고 실제 생성은 추후 연결이 필요합니다.");
+  function applyImageDataUrl(dataUrl){
+    return new Promise(function(resolve,reject){
+      var img = new Image();
+      img.onload = function(){
+        imgObjRef.current = img;
+        setLayers(function(prev){
+          return prev.map(function(layer){
+            return layer.type==="image"
+              ? Object.assign({}, layer, { src:dataUrl, imgW:img.naturalWidth, imgH:img.naturalHeight })
+              : layer;
+          });
+        });
+        resolve(img);
+      };
+      img.onerror = reject;
+      img.src = dataUrl;
+    });
+  }
+  async function handleGenerateImageRequest(){
+    var activeSize = activeBoard ? getSizeById(activeBoard) : null;
+    var promptText = typeof window !== "undefined" && typeof window.prompt === "function"
+      ? window.prompt("생성할 이미지 프롬프트를 입력하세요.", "프리미엄 전자제품 배너용 깔끔한 스튜디오 제품 비주얼, 광고용, realistic, high detail")
+      : "";
+    if(!promptText || !promptText.trim()) return;
+    saveHistory();
+    setImageGenerateBusy(true);
+    setImageGenerateStatus("이미지 생성 중...");
+    try{
+      var response = await fetch("/api/generate-image",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          prompt: promptText.trim(),
+          boardWidth: activeSize ? activeSize.w : 1024,
+          boardHeight: activeSize ? activeSize.h : 1024,
+          quality: "medium"
+        })
+      });
+      var payload = await response.json();
+      if(!response.ok) throw new Error(payload && payload.error ? payload.error : "이미지 생성에 실패했습니다.");
+      await applyImageDataUrl(payload.dataUrl);
+      setImageGenerateStatus("생성 이미지를 현재 이미지 레이어에 적용했습니다.");
+    }catch(error){
+      setImageGenerateStatus(error && error.message ? error.message : "이미지 생성에 실패했습니다.");
+    }finally{
+      setImageGenerateBusy(false);
     }
   }
   function handleAddTextLayer(){
@@ -1378,6 +1428,8 @@ return React.createElement("div",{className:"app-shell",style:{width:"100%",heig
           onUploadImageFile:handleFile,
           onRemoveImage:handleLayerPanelRemoveImage,
           onGenerateImage:handleGenerateImageRequest,
+          imageGenerateBusy:imageGenerateBusy,
+          imageStatusText:imageGenerateStatus,
           onAddTextLayer:handleAddTextLayer,
           onDeleteLayer:function(layerId){
             if(!activeBoard || !layerId) return;
