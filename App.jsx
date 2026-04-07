@@ -8,6 +8,7 @@ var SNAPSHOT_STORAGE_KEY = "banner-variation-editor:snapshots";
 var HISTORY_LIMIT = 50;
 
 var FONTS = [
+  {family:"Pretendard",weights:[300,400,500,600,700,800,900]},
   {family:"Noto Sans KR",weights:[300,400,500,700,800,900]},{family:"Nanum Gothic",weights:[400,700,800]},
   {family:"Noto Serif KR",weights:[300,400,500,700,900]},{family:"Black Han Sans",weights:[400]},
   {family:"Roboto",weights:[300,400,500,700,900]},{family:"Montserrat",weights:[300,400,500,600,700,800,900]},
@@ -67,9 +68,14 @@ var MD = {
   dangerSoft:"rgba(255,123,114,.14)",
   shadow:"0 1px 2px rgba(0,0,0,.35), 0 12px 28px rgba(0,0,0,.28)"
 };
-var iS={background:MD.surface2,border:"1px solid "+MD.line,borderRadius:12,padding:"8px 10px",color:MD.text,fontSize:12,fontFamily:"Roboto,'Noto Sans KR',sans-serif",width:"100%",boxSizing:"border-box",boxShadow:"inset 0 1px 0 rgba(255,255,255,.03)"};
+var iS={background:MD.surface2,border:"1px solid "+MD.line,borderRadius:12,padding:"8px 10px",color:MD.text,fontSize:12,fontFamily:"Pretendard,Roboto,'Noto Sans KR',sans-serif",width:"100%",boxSizing:"border-box",boxShadow:"inset 0 1px 0 rgba(255,255,255,.03)"};
 var sT={fontSize:11,color:MD.muted,textTransform:"uppercase",letterSpacing:".08em",marginBottom:10,fontWeight:700};
 var hSt={background:MD.primary,position:"absolute",zIndex:30,boxShadow:"0 1px 3px rgba(26,115,232,.35)"};
+var DEFAULT_LINE_HEIGHT = 1.4;
+function trackingPercentToEm(percent){return clamp((+percent||0)/100,-0.3,0.3)}
+function trackingEmToPercent(em){return Math.round(clamp(+em||0,-0.3,0.3)*100)}
+function lineHeightPercentToValue(percent){return clamp((+percent||140)/100,0.8,3)}
+function lineHeightValueToPercent(value){return Math.round(clamp(+value||DEFAULT_LINE_HEIGHT,0.8,3)*100)}
 function getZoomStep(deltaY){
   var magnitude = Math.min(Math.abs(deltaY), 160);
   var factor = Math.exp((-deltaY / 100) * 0.16 * (magnitude / 40));
@@ -85,7 +91,7 @@ function measureTextBlock(text,fontSize,fontFamily,fontWeight,lineHeight,maxWidt
   probe.style.boxSizing="border-box";
   probe.style.whiteSpace="pre-wrap";
   probe.style.wordBreak="keep-all";
-  probe.style.fontFamily='"'+fontFamily+'","Noto Sans KR",sans-serif';
+  probe.style.fontFamily='"'+fontFamily+'","Pretendard","Noto Sans KR",sans-serif';
   probe.style.fontSize=fontSize+"px";
   probe.style.fontWeight=String(fontWeight);
   probe.style.lineHeight=String(lineHeight);
@@ -160,9 +166,9 @@ export default function App(){
 
   var _layers=useState([
     {id:"img1",type:"image",label:"메인 비주얼",name:"메인 비주얼",src:null,imgW:0,imgH:0,visible:true,zIndex:0},
-    {id:"l1",type:"text",name:"메인 카피",role:"headline",content:"여름맞이 최대 50% 할인",font:"Noto Sans KR",size:48,weight:800,ls:-.02,lh:1.25,color:"#FFFFFF",align:"center",visible:true,zIndex:1},
+    {id:"l1",type:"text",name:"메인 카피",role:"headline",content:"여름맞이 최대 50% 할인",font:"Noto Sans KR",size:48,weight:800,ls:-.02,lh:1.4,color:"#FFFFFF",align:"center",visible:true,zIndex:1},
     {id:"l2",type:"text",name:"보조 카피",role:"subheadline",content:"LG 베스트샵 전 제품",font:"Noto Sans KR",size:24,weight:500,ls:0,lh:1.4,color:"#CCCCCC",align:"center",visible:true,zIndex:2},
-    {id:"l3",type:"text",name:"CTA 버튼",role:"cta",content:"자세히 보기",font:"Noto Sans KR",size:20,weight:700,ls:.02,lh:1,color:"#FFFFFF",align:"center",visible:true,bg:"#A50034",zIndex:3},
+    {id:"l3",type:"text",name:"CTA 버튼",role:"cta",content:"자세히 보기",font:"Noto Sans KR",size:20,weight:700,ls:.02,lh:1.4,color:"#FFFFFF",align:"center",visible:true,bg:"#A50034",zIndex:3},
   ]);var layers=_layers[0],setLayers=_layers[1];
   
   var _ov=useState({});var overrides=_ov[0],setOverrides=_ov[1];
@@ -360,6 +366,7 @@ export default function App(){
 
   useEffect(function(){
     var l=document.createElement("link");l.href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;800;900&family=Nanum+Gothic:wght@400;700;800&family=Noto+Serif+KR:wght@300;400;500;700;900&family=Black+Han+Sans&family=Roboto:wght@300;400;500;700;900&family=Montserrat:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@400;500;600;700;800;900&family=Oswald:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap";l.rel="stylesheet";document.head.appendChild(l);
+    var pretendard=document.createElement("link");pretendard.href="https://cdn.jsdelivr.net/npm/pretendard/dist/web/static/pretendard.css";pretendard.rel="stylesheet";document.head.appendChild(pretendard);
     var s=document.createElement("style");s.innerHTML=".ctx-item { padding: 8px 10px; font-size: 12px; color: "+MD.text+"; cursor: pointer; border-radius: 10px; transition: transform .08s ease, background-color .16s ease, color .16s ease, filter .16s ease; } .ctx-item:hover { background: "+MD.primarySoft+"; color: "+MD.primary+"; } .ctx-item:active { transform: translateY(1px) scale(.985); filter: brightness(.97); } .ctx-item.danger:hover { background: "+MD.dangerSoft+"; color: "+MD.danger+"; } .app-shell { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; } .app-shell button { transition: transform .08s ease, filter .16s ease, box-shadow .16s ease, background-color .16s ease, border-color .16s ease; -webkit-tap-highlight-color: transparent; } .app-shell button:not(:disabled):hover { filter: brightness(1.04); } .app-shell button:not(:disabled):active { transform: translateY(1px) scale(.985); filter: brightness(.96); } .app-shell input[type=number] { -webkit-appearance: none; appearance: textfield; } .app-shell input[type=number]::-webkit-outer-spin-button, .app-shell input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; } .app-shell textarea::-webkit-scrollbar { width: 0; height: 0; display: none; }";document.head.appendChild(s);
   },[]);
   
@@ -541,7 +548,7 @@ export default function App(){
         size:24,
         weight:700,
         ls:0,
-        lh:1.4,
+        lh:DEFAULT_LINE_HEIGHT,
         color:"#FFFFFF",
         align:"center",
         visible:true,
@@ -646,7 +653,7 @@ export default function App(){
       nextW = ((ctaMeasure.width + pH * 2) / sz.w) * 100;
       nextH = ((ctaMeasure.height + pV * 2) / sz.h) * 100;
     } else {
-      var textMeasure = measureTextBlock(String(layer.content || ""), er.fs, layer.font, layer.weight, layer.lh, null);
+      var textMeasure = measureTextBlock(String(layer.content || ""), er.fs, layer.font, layer.weight, layer.lh || DEFAULT_LINE_HEIGHT, null);
       nextW = (textMeasure.width / sz.w) * 100;
       nextH = (textMeasure.height / sz.h) * 100;
     }
@@ -694,13 +701,14 @@ export default function App(){
     var rw=(tReg.w/100)*sw/sz.w*100;
     var rh=(tReg.h/100)*sh/sz.h*100;
     if(layer.type==="text"){
+      var layerLineHeight = layer.lh || DEFAULT_LINE_HEIGHT;
       var isEditingActive = editingTextId===layer.id && activeBoard===sid && activeEl===layer.id;
       var textContent = String((isEditingActive ? editingDraftValue : layer.content) || "");
       var measurementText = getMeasurementText(textContent);
       var manualBox = hasManualBoxOverride(sid,layer.id);
       var usesManualWidth = manualBox && ov.w!=null;
       var constrainedWidthPx = usesManualWidth ? (ov.w / 100) * sz.w : null;
-      var measured = measureTextBlock(measurementText, fs, layer.font, layer.weight, layer.lh, layer.role==="cta" ? null : constrainedWidthPx);
+      var measured = measureTextBlock(measurementText, fs, layer.font, layer.weight, layerLineHeight, layer.role==="cta" ? null : constrainedWidthPx);
       var intrinsicW = (measured.width / sz.w) * 100;
       var intrinsicH = (measured.height / sz.h) * 100;
       if(layer.role==="cta" && layer.bg){
@@ -1171,7 +1179,7 @@ export default function App(){
         ctx.fillStyle="rgba(255,255,255,0.03)";ctx.fillRect(dx,dy,dw,dh);ctx.strokeStyle="rgba(255,255,255,0.15)";ctx.setLineDash([5,5]);ctx.lineWidth=2;ctx.strokeRect(dx,dy,dw,dh);ctx.setLineDash([])
       }
     }else if(layer.type==="text"){
-      var fs=er.fs;if(fs<=0)return;ctx.font=layer.weight+" "+fs+'px "'+layer.font+'","Noto Sans KR",sans-serif';var tx,ty=dy+dh/2;if(layer.align==="center"){ctx.textAlign="center";tx=dx+dw/2}else if(layer.align==="right"){ctx.textAlign="right";tx=dx+dw}else{ctx.textAlign="left";tx=dx}if(layer.role==="cta"&&layer.bg){var met=ctx.measureText(layer.content);var pH=fs*0.3,pV=fs*0.2;var bw=met.width+pH*2,bh=fs+pV*2;var bx=tx-bw/2,by=ty-bh/2;if(layer.align==="left")bx=tx;if(layer.align==="right")bx=tx-bw;ctx.fillStyle=layer.bg;ctx.beginPath();var rd=Math.min(fs*.2,bh/3);ctx.moveTo(bx+rd,by);ctx.lineTo(bx+bw-rd,by);ctx.quadraticCurveTo(bx+bw,by,bx+bw,by+rd);ctx.lineTo(bx+bw,by+bh-rd);ctx.quadraticCurveTo(bx+bw,by+bh,bx+bw-rd,by+bh);ctx.lineTo(bx+rd,by+bh);ctx.quadraticCurveTo(bx,by+bh,bx,by+bh-rd);ctx.lineTo(bx,by+rd);ctx.quadraticCurveTo(bx,by,bx+rd,by);ctx.closePath();ctx.fill();ctx.textBaseline="middle";ctx.fillStyle=layer.color;ctx.fillText(layer.content,tx,ty);}else{ctx.textBaseline="top";ctx.fillStyle=layer.color;var lines=layer.content.split("\n");var lineH=fs*layer.lh;var startY=dy;for(var li=0;li<lines.length;li++){ctx.fillText(lines[li],tx,startY+(li*lineH));}}}});return c})}
+      var fs=er.fs;if(fs<=0)return;ctx.font=layer.weight+" "+fs+'px "'+layer.font+'","Pretendard","Noto Sans KR",sans-serif';var tx,ty=dy+dh/2;if(layer.align==="center"){ctx.textAlign="center";tx=dx+dw/2}else if(layer.align==="right"){ctx.textAlign="right";tx=dx+dw}else{ctx.textAlign="left";tx=dx}if(layer.role==="cta"&&layer.bg){var met=ctx.measureText(layer.content);var pH=fs*0.3,pV=fs*0.2;var bw=met.width+pH*2,bh=fs+pV*2;var bx=tx-bw/2,by=ty-bh/2;if(layer.align==="left")bx=tx;if(layer.align==="right")bx=tx-bw;ctx.fillStyle=layer.bg;ctx.beginPath();var rd=Math.min(fs*.2,bh/3);ctx.moveTo(bx+rd,by);ctx.lineTo(bx+bw-rd,by);ctx.quadraticCurveTo(bx+bw,by,bx+bw,by+rd);ctx.lineTo(bx+bw,by+bh-rd);ctx.quadraticCurveTo(bx+bw,by+bh,bx+bw-rd,by+bh);ctx.lineTo(bx+rd,by+bh);ctx.quadraticCurveTo(bx,by+bh,bx,by+bh-rd);ctx.lineTo(bx,by+rd);ctx.quadraticCurveTo(bx,by,bx+rd,by);ctx.closePath();ctx.fill();ctx.textBaseline="middle";ctx.fillStyle=layer.color;ctx.fillText(layer.content,tx,ty);}else{ctx.textBaseline="top";ctx.fillStyle=layer.color;var lines=layer.content.split("\n");var lineH=fs*(layer.lh || DEFAULT_LINE_HEIGHT);var startY=dy;for(var li=0;li<lines.length;li++){ctx.fillText(lines[li],tx,startY+(li*lineH));}}}});return c})}
   function exportOne(sz){return renderExportCanvas(sz).then(function(c){return new Promise(function(resolve){c.toBlob(function(blob){var url=URL.createObjectURL(blob);var a=document.createElement("a");a.href=url;a.download="App_"+sz.w+"x"+sz.h+"_"+sz.label.replace(/[\s/:]+/g,"_")+".png";document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);resolve()},"image/png")})})}
   async function exportWithDirectoryPicker(list){
     var dirHandle = await window.showDirectoryPicker();
@@ -1223,7 +1231,7 @@ export default function App(){
             
             return React.createElement("div",{key:layer.id,
               style:{position:"absolute",left:er.x+"%",top:er.y+"%",width:er.w+"%",height:er.h+"%",zIndex:isSel?15:layer.zIndex+2,display:"flex",alignItems:"center",justifyContent:"center",pointerEvents:"none"}}, 
-              React.createElement("div", {id: "layer-"+sz.id+"-"+layer.id, onClick:function(e){e.stopPropagation();activateLayerSelection(sz.id,layer.id,[layer.id]);}, onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")}, onContextMenu:function(e){handleContextMenuLayer(e, sz.id, layer.id)}, style:{position:"relative", display:"flex", width:"100%", height:"100%", maxWidth:"100%", maxHeight:"100%", border:isSel?"0.5px solid rgba(124,196,255,.92)":(layer.src?"0.5px solid transparent":"0.5px dashed rgba(255,255,255,0.15)"), background:layer.src?"transparent":"rgba(255,255,255,0.03)", pointerEvents:"auto", cursor:spaceHeld?"grab":"move", alignItems:"center", justifyContent:"center", flexDirection:"column", boxSizing:"border-box"}},
+              React.createElement("div", {id: "layer-"+sz.id+"-"+layer.id, onClick:function(e){e.stopPropagation();activateLayerSelection(sz.id,layer.id,[layer.id]);}, onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")}, onContextMenu:function(e){handleContextMenuLayer(e, sz.id, layer.id)}, style:{position:"relative", display:"flex", width:"100%", height:"100%", maxWidth:"100%", maxHeight:"100%", border:isSel?"0.5px solid transparent":(layer.src?"0.5px solid transparent":"0.5px dashed rgba(255,255,255,0.15)"), boxShadow:isSel?"inset 0 0 0 1px rgba(124,196,255,.96), 0 0 0 1px rgba(124,196,255,.96)":"none", background:layer.src?"transparent":"rgba(255,255,255,0.03)", pointerEvents:"auto", cursor:spaceHeld?"grab":"move", alignItems:"center", justifyContent:"center", flexDirection:"column", boxSizing:"border-box", overflow:"visible"}},
                 layer.src ? React.createElement("div", {style:{width:"100%", height:"100%", overflow:"hidden", borderRadius:2}}, 
                               React.createElement("img",{src:layer.src,alt:"",draggable:false,style:{width:"100%",height:"100%",objectFit:"cover",transform:"translate("+imgX+"%,"+imgY+"%) scale("+imgS+")",pointerEvents:"none",display:"block"}})
                             )
@@ -1231,7 +1239,10 @@ export default function App(){
                               null
                             ),
                 isSel&&React.createElement(React.Fragment,null,
-                  React.createElement("div",{onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")},style:{position:"absolute",inset:-6,cursor:spaceHeld?"grab":"move",background:"transparent"}}),
+                  React.createElement("div",{onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")},style:{position:"absolute",top:-2,left:-2,right:-2,height:5,cursor:spaceHeld?"grab":"move",background:"transparent"}}),
+                  React.createElement("div",{onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")},style:{position:"absolute",bottom:-2,left:-2,right:-2,height:5,cursor:spaceHeld?"grab":"move",background:"transparent"}}),
+                  React.createElement("div",{onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")},style:{position:"absolute",top:2,bottom:2,left:-2,width:5,cursor:spaceHeld?"grab":"move",background:"transparent"}}),
+                  React.createElement("div",{onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")},style:{position:"absolute",top:2,bottom:2,right:-2,width:5,cursor:spaceHeld?"grab":"move",background:"transparent"}}),
                   React.createElement(ResizeHandles,{sid:sz.id,lid:layer.id,beginDrag:beginDrag,fitLayerToContent:fitLayerToContent,allowVertical:true}),
                   React.createElement("div",{onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")},style:{position:"absolute",top:-8,left:0,fontSize:labelFontSize,color:MD.primary,lineHeight:1,pointerEvents:"auto",whiteSpace:"nowrap",fontWeight:700,letterSpacing:".02em",cursor:spaceHeld?"grab":"move"}},getLayerDisplayName(layer)),
                   React.createElement("div",{onMouseDown:function(e){if(e.button!==0)return; e.stopPropagation();e.preventDefault();saveHistory();setOverrides(function(prev){var n=Object.assign({},prev);if(n[sz.id]){var b=Object.assign({},n[sz.id]);delete b[layer.id];n[sz.id]=b}return n})},style:Object.assign({},hSt,{top:-1.5,left:-1.5,cursor:"pointer",background:"#ff5a5a",fontSize:5.5,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",width:8,height:8,borderRadius:999,border:"0.5px solid #fff"})},"↺")
@@ -1244,20 +1255,25 @@ export default function App(){
           var isEditingText = isSel && activeBoard===sz.id && activeEl===layer.id && editingTextId===layer.id;
           return React.createElement("div",{key:layer.id,
             style:{position:"absolute",left:er.x+"%",top:er.y+"%",width:er.w+"%",height:er.h+"%",display:"flex",alignItems:isCta?"center":"flex-start",justifyContent:layer.align==="center"?"center":layer.align==="right"?"flex-end":"flex-start",zIndex:isSel?15:layer.zIndex+2,userSelect:"none",pointerEvents:"none",overflow:"visible"}},
-              React.createElement("div",{id: "layer-"+sz.id+"-"+layer.id, onClick:function(e){e.stopPropagation();activateLayerSelection(sz.id,layer.id,[layer.id]);}, onMouseDown:function(e){if(isEditingText){var editableNode=document.getElementById("layer-content-"+sz.id+"-"+layer.id);if(editableNode && editableNode.contains(e.target)) return;} if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")}, onContextMenu:function(e){handleContextMenuLayer(e, sz.id, layer.id)}, style:{position:"relative",display:"flex",width:"100%",height:"100%",maxWidth:"100%",maxHeight:"100%",border:isSel?"0.5px solid rgba(124,196,255,.92)":"0.5px solid transparent", pointerEvents:"auto", cursor:spaceHeld?"grab":"move", fontFamily:'"'+layer.font+'","Noto Sans KR",sans-serif',fontSize:dfs,fontWeight:layer.weight,letterSpacing:layer.ls+"em",lineHeight:layer.lh,color:layer.color,textAlign:layer.align,alignItems:isCta?"center":"flex-start",justifyContent:layer.align==="center"?"center":layer.align==="right"?"flex-end":"flex-start",boxSizing:"border-box",overflow:"visible"}},
-              isSel && !isEditingText && React.createElement("div",{onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")},style:{position:"absolute",inset:-6,cursor:spaceHeld?"grab":"move",background:"transparent"}}),
+              React.createElement("div",{id: "layer-"+sz.id+"-"+layer.id, onClick:function(e){e.stopPropagation();activateLayerSelection(sz.id,layer.id,[layer.id]);}, onMouseDown:function(e){if(isEditingText){var editableNode=document.getElementById("layer-content-"+sz.id+"-"+layer.id);if(editableNode && editableNode.contains(e.target)) return;} if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")}, onContextMenu:function(e){handleContextMenuLayer(e, sz.id, layer.id)}, style:{position:"relative",display:"flex",width:"100%",height:"100%",maxWidth:"100%",maxHeight:"100%",border:isSel?"0.5px solid transparent":"0.5px solid transparent",boxShadow:isSel?"inset 0 0 0 1px rgba(124,196,255,.96), 0 0 0 1px rgba(124,196,255,.96)":"none", pointerEvents:"auto", cursor:spaceHeld?"grab":"move", fontFamily:'"'+layer.font+'","Pretendard","Noto Sans KR",sans-serif',fontSize:dfs,fontWeight:layer.weight,letterSpacing:(layer.ls||0)+"em",lineHeight:layer.lh||DEFAULT_LINE_HEIGHT,color:layer.color,textAlign:layer.align,alignItems:isCta?"center":"flex-start",justifyContent:layer.align==="center"?"center":layer.align==="right"?"flex-end":"flex-start",boxSizing:"border-box",overflow:"visible"}},
+              isSel && !isEditingText && React.createElement(React.Fragment,null,
+                React.createElement("div",{onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")},style:{position:"absolute",top:-2,left:-2,right:-2,height:5,cursor:spaceHeld?"grab":"move",background:"transparent"}}),
+                React.createElement("div",{onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")},style:{position:"absolute",bottom:-2,left:-2,right:-2,height:5,cursor:spaceHeld?"grab":"move",background:"transparent"}}),
+                React.createElement("div",{onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")},style:{position:"absolute",top:2,bottom:2,left:-2,width:5,cursor:spaceHeld?"grab":"move",background:"transparent"}}),
+                React.createElement("div",{onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")},style:{position:"absolute",top:2,bottom:2,right:-2,width:5,cursor:spaceHeld?"grab":"move",background:"transparent"}})
+              ),
               isSel && isEditingText && React.createElement(React.Fragment,null,
-                React.createElement("div",{onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")},style:{position:"absolute",top:-2,left:-2,right:-2,height:4,cursor:spaceHeld?"grab":"move",background:"transparent"}}),
-                React.createElement("div",{onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")},style:{position:"absolute",bottom:-2,left:-2,right:-2,height:4,cursor:spaceHeld?"grab":"move",background:"transparent"}}),
-                React.createElement("div",{onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")},style:{position:"absolute",top:2,bottom:2,left:-2,width:4,cursor:spaceHeld?"grab":"move",background:"transparent"}}),
-                React.createElement("div",{onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")},style:{position:"absolute",top:2,bottom:2,right:-2,width:4,cursor:spaceHeld?"grab":"move",background:"transparent"}})
+                React.createElement("div",{onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")},style:{position:"absolute",top:-2,left:-2,right:-2,height:5,cursor:spaceHeld?"grab":"move",background:"transparent"}}),
+                React.createElement("div",{onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")},style:{position:"absolute",bottom:-2,left:-2,right:-2,height:5,cursor:spaceHeld?"grab":"move",background:"transparent"}}),
+                React.createElement("div",{onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")},style:{position:"absolute",top:2,bottom:2,left:-2,width:5,cursor:spaceHeld?"grab":"move",background:"transparent"}}),
+                React.createElement("div",{onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")},style:{position:"absolute",top:2,bottom:2,right:-2,width:5,cursor:spaceHeld?"grab":"move",background:"transparent"}})
               ),
               isSel&&React.createElement("div",{onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")},style:{position:"absolute",top:-8,left:0,fontSize:labelFontSize,color:MD.primary,lineHeight:1,pointerEvents:"auto",whiteSpace:"nowrap",fontWeight:700,letterSpacing:".02em",cursor:spaceHeld?"grab":"move"}},getLayerDisplayName(layer)),
               isEditingText
                 ?React.createElement("textarea",{ref:editingRef,id:"layer-content-"+sz.id+"-"+layer.id,value:editingDraftValue,spellCheck:false,wrap:textUsesManualBox?"soft":"off",onClick:function(e){e.stopPropagation();},onMouseDown:function(e){e.stopPropagation();},onCompositionStart:function(){isComposingRef.current=true;},onCompositionEnd:function(e){isComposingRef.current=false;requestAnimationFrame(function(){syncEditingTextarea(e.target);setTick(function(c){return c+1});});},onChange:function(e){editingDraftRef.current=e.target.value;setEditingDraftValue(e.target.value);requestAnimationFrame(function(){syncEditingTextarea(e.target);setTick(function(c){return c+1});});},onBlur:function(){if(isComposingRef.current) return; commitEditingText(sz.id,layer.id,false);},onKeyDown:function(e){if(e.key==="Enter"){requestAnimationFrame(function(){syncEditingTextarea(e.currentTarget);setTick(function(c){return c+1});});} if(e.key==="Escape"){e.preventDefault();commitEditingText(sz.id,layer.id,true);e.currentTarget.blur();}},style:{position:"absolute",top:0,left:0,whiteSpace:textUsesManualBox?"pre-wrap":"pre",wordBreak:"keep-all",display:"block",width:"100%",minWidth:"100%",maxWidth:"100%",height:"100%",minHeight:"100%",padding:isCta?(dfs*0.2)+"px "+(dfs*0.3)+"px":0,margin:0,border:"none",background:isCta&&layer.bg?layer.bg:"transparent",borderRadius:isCta&&layer.bg?999:0,outline:"none",overflow:"hidden",resize:"none",cursor:"text",color:"inherit",font:"inherit",letterSpacing:"inherit",lineHeight:"inherit",textAlign:layer.align,boxSizing:"border-box",scrollbarWidth:"none",msOverflowStyle:"none",boxShadow:isCta&&layer.bg?"0 1px 3px rgba(0,0,0,.12)":"none"}}) 
                 :isCta&&layer.bg
-                  ?React.createElement("span",{id:"layer-content-"+sz.id+"-"+layer.id,style:{position:"absolute",top:0,left:0,width:"100%",height:"100%",boxSizing:"border-box",background:layer.bg,padding:(dfs*0.2)+"px "+(dfs*0.3)+"px",borderRadius:999,whiteSpace:textUsesManualBox?"pre-wrap":"pre",wordBreak:"keep-all",display:"flex",alignItems:"center",justifyContent:layer.align==="center"?"center":layer.align==="right"?"flex-end":"flex-start",textAlign:layer.align,lineHeight:layer.lh,boxShadow:"0 1px 3px rgba(0,0,0,.12)"}} ,layer.content)
-                  :React.createElement("span",{id:"layer-content-"+sz.id+"-"+layer.id,style:{position:"absolute",top:0,left:0,whiteSpace:textUsesManualBox?"pre-wrap":"pre",wordBreak:"keep-all",display:"block",width:"100%",maxWidth:"100%",overflow:"visible"}},layer.content),
+                  ?React.createElement("span",{id:"layer-content-"+sz.id+"-"+layer.id,style:{position:"absolute",top:0,left:0,width:"100%",height:"100%",boxSizing:"border-box",background:layer.bg,padding:(dfs*0.2)+"px "+(dfs*0.3)+"px",borderRadius:999,whiteSpace:textUsesManualBox?"pre-wrap":"pre",wordBreak:"keep-all",display:"flex",alignItems:"center",justifyContent:layer.align==="center"?"center":layer.align==="right"?"flex-end":"flex-start",textAlign:layer.align,lineHeight:layer.lh||DEFAULT_LINE_HEIGHT,boxShadow:"0 1px 3px rgba(0,0,0,.12)"}} ,layer.content)
+                  :React.createElement("span",{id:"layer-content-"+sz.id+"-"+layer.id,style:{position:"absolute",top:0,left:0,whiteSpace:textUsesManualBox?"pre-wrap":"pre",wordBreak:"keep-all",display:"block",width:"100%",maxWidth:"100%",overflow:"visible",lineHeight:layer.lh||DEFAULT_LINE_HEIGHT,letterSpacing:(layer.ls||0)+"em"}},layer.content),
               isSel&&React.createElement(ResizeHandles,{sid:sz.id,lid:layer.id,beginDrag:beginDrag,fitLayerToContent:fitLayerToContent,allowVertical:true})
             )
           );
@@ -1559,8 +1575,8 @@ return React.createElement("div",{className:"app-shell",style:{width:"100%",heig
                   React.createElement("div",{style:{flex:1}},React.createElement("div",{style:{fontSize:9,color:"#444",marginBottom:2}},"Size"),React.createElement("input",{type:"number",min:6,max:300,value:(function(){var er=getElRect(activeBoard,activeLayerObj);return Math.round(er.fs)})(),onFocus:saveHistory,onChange:function(e){setOv(activeBoard,activeEl,{fs:clamp(+e.target.value||0,6,300)})},style:iS})),
                   React.createElement("div",{style:{flex:1}},React.createElement("div",{style:{fontSize:9,color:"#444",marginBottom:2}},"Wt"),React.createElement("select",{value:activeLayerObj.weight,onFocus:saveHistory,onChange:function(e){setBoardLayerProp(activeBoard,activeEl,"weight",+e.target.value)},style:iS},(allFontsList.find(function(f){return f.family===activeLayerObj.font})||{weights:[400,700]}).weights.map(function(w){return React.createElement("option",{key:w,value:w},w)})))
                 ),
-                React.createElement("div",{style:{marginBottom:4}},React.createElement("div",{style:{display:"flex",justifyContent:"space-between"}},React.createElement("span",{style:{fontSize:9,color:"#444"}},"자간"),React.createElement("span",{style:{fontSize:9,color:"#666"}},activeLayerObj.ls+"em")),React.createElement("input",{type:"range",min:-.1,max:.3,step:.005,value:activeLayerObj.ls,onMouseDown:saveHistory,onChange:function(e){setBoardLayerProp(activeBoard,activeEl,"ls",+e.target.value)},style:{width:"100%",accentColor:"#00d4ff"}})),
-                React.createElement("div",{style:{marginBottom:4}},React.createElement("div",{style:{display:"flex",justifyContent:"space-between"}},React.createElement("span",{style:{fontSize:9,color:"#444"}},"행간"),React.createElement("span",{style:{fontSize:9,color:"#666"}},activeLayerObj.lh)),React.createElement("input",{type:"range",min:.8,max:2.5,step:.05,value:activeLayerObj.lh,onMouseDown:saveHistory,onChange:function(e){setBoardLayerProp(activeBoard,activeEl,"lh",+e.target.value)},style:{width:"100%",accentColor:"#00d4ff"}})),
+                React.createElement("div",{style:{marginBottom:4}},React.createElement("div",{style:{display:"flex",justifyContent:"space-between"}},React.createElement("span",{style:{fontSize:9,color:"#444"}},"자간"),React.createElement("span",{style:{fontSize:9,color:"#666"}},trackingEmToPercent(activeLayerObj.ls)+"%")),React.createElement("input",{type:"range",min:-30,max:30,step:1,value:trackingEmToPercent(activeLayerObj.ls),onMouseDown:saveHistory,onChange:function(e){setBoardLayerProp(activeBoard,activeEl,"ls",trackingPercentToEm(+e.target.value))},style:{width:"100%",accentColor:"#00d4ff"}})),
+                React.createElement("div",{style:{marginBottom:4}},React.createElement("div",{style:{display:"flex",justifyContent:"space-between"}},React.createElement("span",{style:{fontSize:9,color:"#444"}},"행간"),React.createElement("span",{style:{fontSize:9,color:"#666"}},lineHeightValueToPercent(activeLayerObj.lh||DEFAULT_LINE_HEIGHT)+"%")),React.createElement("input",{type:"range",min:80,max:260,step:5,value:lineHeightValueToPercent(activeLayerObj.lh||DEFAULT_LINE_HEIGHT),onMouseDown:saveHistory,onChange:function(e){setBoardLayerProp(activeBoard,activeEl,"lh",lineHeightPercentToValue(+e.target.value))},style:{width:"100%",accentColor:"#00d4ff"}})),
                 React.createElement("div",{style:{display:"flex",gap:2}},[{v:"left",l:"좌측"},{v:"center",l:"중앙"},{v:"right",l:"우측"},{v:"justify",l:"양쪽"}].map(function(a){return React.createElement("button",{key:a.v,onClick:function(){saveHistory();setBoardLayerProp(activeBoard,activeEl,"align",a.v)},style:{flex:1,padding:"4px",border:"none",borderRadius:2,cursor:"pointer",fontSize:10,fontFamily:"inherit",background:activeLayerObj.align===a.v?"rgba(0,212,255,.12)":"#0a0a0a",color:activeLayerObj.align===a.v?"#00d4ff":"#444"}},a.l)}))
               ),
               React.createElement("div",{style:{padding:10,borderBottom:"1px solid #1a1a1a"}},
