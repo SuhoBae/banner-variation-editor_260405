@@ -336,3 +336,9 @@ Resolution: Removed the `Generate image` button, the OpenAI/Vercel image-generat
 Situation: The editor already supported board-specific overrides for text and image transform state, but users could not select multiple artboards, uploaded PNGs still replaced the base image layer globally, and there was no efficient way to copy the current layer state across multiple boards or all visible boards.
 
 Resolution: Added a separate `selectedBoardIds` state for multi-artboard targeting while preserving `activeBoard` as the single editing context. Empty-canvas drag now creates a marquee selection box, and `Ctrl/Cmd + click` toggles boards into the current selection set. Image uploads and image removal now write `src`, `imgW`, and `imgH` into `overrides[boardId][layerId]`, making uploaded PNGs board-specific by default. A single `applyCurrentLayerToBoards()` action now copies the currently edited layer state to either the selected artboards or, when only one board is selected, all visible artboards. The export path was updated to resolve each board's image source independently instead of relying on one global cached image element.
+
+[2026-04-08] Shift Additive Artboard Selection
+
+Situation: Multi-artboard selection worked with `Ctrl/Cmd + click` and marquee drag, but the user also expected the common design-tool pattern where `Shift` adds to the current artboard selection set.
+
+Resolution: Expanded additive board-selection detection so `Shift` behaves the same as `Ctrl/Cmd` for both direct artboard clicks and empty-canvas marquee selection. This keeps the single `selectedBoardIds` model intact while making multi-selection faster and more ergonomic.

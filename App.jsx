@@ -1040,8 +1040,8 @@ export default function App(){
         sx:e.clientX,
         sy:e.clientY,
         moved:false,
-        additive:!!(e.ctrlKey || e.metaKey),
-        baseSelection:(e.ctrlKey || e.metaKey) ? selectedBoardIds.slice() : []
+        additive:!!(e.ctrlKey || e.metaKey || e.shiftKey),
+        baseSelection:(e.ctrlKey || e.metaKey || e.shiftKey) ? selectedBoardIds.slice() : []
       };
       if(canvasRect) setBoardSelectionBox({left:e.clientX-canvasRect.left, top:e.clientY-canvasRect.top, width:0, height:0});
       return;
@@ -1344,7 +1344,7 @@ export default function App(){
     if(e.button!==0 || spaceHeld) return;
     if(e.target.getAttribute("data-bid")!==sid) return;
     e.stopPropagation();
-    if(e.ctrlKey || e.metaKey){
+    if(e.ctrlKey || e.metaKey || e.shiftKey){
       var alreadySelected = selectedBoardIds.indexOf(sid)!==-1;
       var nextIds = alreadySelected ? selectedBoardIds.filter(function(id){ return id!==sid; }) : selectedBoardIds.concat([sid]);
       setBoardSelection(nextIds, nextIds.length ? (alreadySelected ? nextIds[nextIds.length-1] : sid) : null);
