@@ -306,3 +306,9 @@ Resolution: Changed selected text and image boxes to render an inside-plus-outsi
 Situation: The right inspector still used short labels like `Size` and `Wt`, which made unit meaning ambiguous while the user was tuning typography. The same screen also duplicated the board-scoped delete action, once in the right inspector and once conceptually in the layer list, which made the destructive action feel scattered.
 
 Resolution: Clarified typography labels in the inspector to `Size (px)` and `Weight (100-900)` so font size and CSS font-weight units are explicit in the UI. Moved the board-only delete action into the left layer panel as a small trash icon on each layer row, and replaced the right-panel delete button with a short note pointing users to the consolidated delete control. This keeps the destructive action closer to the layer it affects and removes duplicated delete UI.
+
+[2026-04-07] Text Property Header Simplification and Transparent Outer Selector Stroke
+
+Situation: The text-property editor still repeated the current role with a `Sub-headline` style header and a second role dropdown even though layer naming and direct text editing already carried the main meaning. The selected layer stroke also still showed a visible outer blue line, while the user wanted only the inner blue line to remain visible and the outer drag band to stay invisible.
+
+Resolution: Simplified the text-property section by removing the role header and role dropdown, then renamed the section to `텍스트 편집창` so it behaves as a direct content editor instead of a role editor. Updated typography field labels to the Korean names `폰트사이즈 (px)` and `폰트웨이트 (100-900)`. Adjusted the selected-layer box shadow so the inside blue stroke remains visible while the outside companion stroke is transparent, preserving the enlarged draggable area without drawing an extra visible border outside the layer.
