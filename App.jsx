@@ -4,6 +4,8 @@ import NumberInput from "./src/adcanvas/components/NumberInput.jsx";
 import ResizeHandles from "./src/adcanvas/components/ResizeHandles.jsx";
 import LayerListPanel from "./src/adcanvas/components/LayerListPanel.jsx";
 
+var SNAPSHOT_STORAGE_KEY = "banner-variation-editor:snapshots";
+
 var FONTS = [
   {family:"Noto Sans KR",weights:[300,400,500,700,800,900]},{family:"Nanum Gothic",weights:[400,700,800]},
   {family:"Noto Serif KR",weights:[300,400,500,700,900]},{family:"Black Han Sans",weights:[400]},
@@ -130,6 +132,21 @@ function getAspectRatioParts(w,h){
   var div = gcd(rw, rh);
   return { w: Math.round(rw / div), h: Math.round(rh / div) };
 }
+function formatSnapshotDefaultName(date){
+  var d = date || new Date();
+  var yyyy = d.getFullYear();
+  var mm = String(d.getMonth()+1).padStart(2,"0");
+  var dd = String(d.getDate()).padStart(2,"0");
+  var hh = String(d.getHours()).padStart(2,"0");
+  var mi = String(d.getMinutes()).padStart(2,"0");
+  return yyyy + "-" + mm + "-" + dd + " " + hh + ":" + mi;
+}
+function formatSnapshotSavedAt(value){
+  if(!value) return "";
+  var date = new Date(value);
+  if(Number.isNaN(date.getTime())) return "";
+  return formatSnapshotDefaultName(date);
+}
 function getLayerDisplayName(layer){
   if(!layer) return "";
   if(layer.name) return layer.name;
@@ -162,10 +179,10 @@ export default function App(){
   
   var _cfnt=useState([]); var customFonts=_cfnt[0],setCustomFonts=_cfnt[1];
   var _cfntIn=useState(""); var customFontInput=_cfntIn[0],setCustomFontInput=_cfntIn[1];
-  var _assetLib=useState([]); var assetLibrary=_assetLib[0],setAssetLibrary=_assetLib[1];
-  var _assetUrl=useState(""); var assetUrlInput=_assetUrl[0],setAssetUrlInput=_assetUrl[1];
-  var _assetMsg=useState("여러 PNG 업로드 또는 URL 붙여넣기로 에셋 트레이를 채우세요."); var assetMessage=_assetMsg[0],setAssetMessage=_assetMsg[1];
-  var _assetBusy=useState(false); var assetLoading=_assetBusy[0],setAssetLoading=_assetBusy[1];
+  var _saved=useState([]); var savedProjects=_saved[0],setSavedProjects=_saved[1];
+  var _saveName=useState(""); var saveNameDraft=_saveName[0],setSaveNameDraft=_saveName[1];
+  var _saveMsg=useState("현재 작업 상태를 저장하고 다시 불러올 수 있습니다."); var saveMessage=_saveMsg[0],setSaveMessage=_saveMsg[1];
+  var _saveBusy=useState(false); var saveBusy=_saveBusy[0],setSaveBusy=_saveBusy[1];
   
   var _sumId=useState(null); var summarizingId=_sumId[0], setSummarizingId=_sumId[1]; // 에이전트 요약 상태
   
@@ -219,6 +236,60 @@ export default function App(){
     setActiveEl(null); setSelectedEls([]);
     setCtxMenu(null);
   }, []);
+
+  useEffect(function(){
+    try{
+      var raw = localStorage.getItem(SNAPSHOT_STORAGE_KEY);
+      if(!raw) return;
+      var parsed = JSON.parse(raw);
+      if(Array.isArray(parsed)) setSavedProjects(parsed);
+    }catch(err){}
+  },[]);
+
+  function persistSavedProjects(nextList){
+    setSavedProjects(nextList);
+    try{
+      localStorage.setItem(SNAPSHOT_STORAGE_KEY, JSON.stringify(nextList));
+    }catch(err){}
+  }
+
+  function buildProjectSnapshot(){
+    return JSON.parse(JSON.stringify({
+      layers: layers,
+      overrides: overrides,
+      bgColor: bgColor,
+      boardDefaults: boardDefaults,
+      customFonts: customFonts,
+      boardSizeOverrides: boardSizeOverrides,
+      selIds: selIds,
+      customSizes: customSizes,
+      showSafe: showSafe,
+      showGrid: showGrid,
+      clipBoard: clipBoard
+    }));
+  }
+
+  function applyProjectSnapshot(snapshot){
+    if(!snapshot) return;
+    setLayers(snapshot.layers || []);
+    setOverrides(snapshot.overrides || {});
+    setBgColor(snapshot.bgColor || "#0f0f0f");
+    setBoardDefaults(snapshot.boardDefaults || {});
+    setCustomFonts(snapshot.customFonts || []);
+    setBoardSizeOverrides(snapshot.boardSizeOverrides || {});
+    setSelIds(snapshot.selIds || []);
+    setCustomSizes(snapshot.customSizes || []);
+    setShowSafe(snapshot.showSafe !== false);
+    setShowGrid(!!snapshot.showGrid);
+    setClipBoard(!!snapshot.clipBoard);
+    setActiveBoard(null);
+    setActiveEl(null);
+    setSelectedEls([]);
+    setEditingTextId(null);
+    setCtxMenu(null);
+    histRef.current = { past: [], future: [] };
+    setHistCount(function(c){return c+1});
+  }
 
   var _sel=useState(["g1","g3","g4","i1","i3","y1"]);var selIds=_sel[0],setSelIds=_sel[1];
   var _cs=useState([]);var customSizes=_cs[0],setCustomSizes=_cs[1];
@@ -849,104 +920,181 @@ export default function App(){
   function syncMainImage(src,w,h){
     setLayers(function(p){return p.map(function(l){return l.type==="image"?Object.assign({},l,{src:src,imgW:w||0,imgH:h||0}):l})});
   }
-  function appendAssets(nextAssets){
-    if(!nextAssets || nextAssets.length===0) return;
-    setAssetLibrary(function(prev){
-      var merged = prev.slice();
-      nextAssets.forEach(function(asset){
-        if(!merged.some(function(existing){ return existing.src===asset.src || existing.name===asset.name; })){
-          merged.push(asset);
-        }
-      });
-      return merged;
-    });
-  }
-  function applyAsset(asset){
-    if(!asset || !asset.src) return;
-    saveHistory();
-    var img = new Image();
-    img.onload = function(){
-      imgObjRef.current = img;
-      syncMainImage(asset.src, asset.w || img.naturalWidth, asset.h || img.naturalHeight);
-      setAssetMessage("선택한 에셋을 메인 비주얼로 적용했습니다: " + asset.name);
-    };
-    img.src = asset.src;
-  }
-  function readFileAsset(file){
-    return new Promise(function(resolve,reject){
-      var reader=new FileReader();
-      reader.onload=function(ev){
-        var img = new Image();
-        img.onload = function(){
-          resolve({id:"asset-"+Date.now()+"-"+Math.random().toString(36).slice(2,7),name:file.name,src:ev.target.result,w:img.naturalWidth,h:img.naturalHeight,origin:"upload"});
-        };
-        img.onerror = reject;
-        img.src = ev.target.result;
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  }
-  function fetchUrlAsAsset(url){
-    return fetch(url).then(function(res){
-      if(!res.ok) throw new Error("HTTP " + res.status);
-      return res.blob();
-    }).then(function(blob){
-      return new Promise(function(resolve,reject){
-        var reader = new FileReader();
-        reader.onload = function(ev){
-          var img = new Image();
-          img.onload = function(){
-            var cleanName = url.split("/").pop() || "remote-image";
-            resolve({id:"asset-"+Date.now()+"-"+Math.random().toString(36).slice(2,7),name:cleanName,src:ev.target.result,w:img.naturalWidth,h:img.naturalHeight,origin:"url"});
-          };
-          img.onerror = reject;
-          img.src = ev.target.result;
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-    });
-  }
   function handleFile(file){if(!file)return;saveHistory();var reader=new FileReader();reader.onload=function(ev){var img=new Image();img.onload=function(){imgObjRef.current=img;setLayers(function(p){return p.map(function(l){return l.type==="image"?Object.assign({},l,{src:ev.target.result,imgW:img.naturalWidth,imgH:img.naturalHeight}):l})})};img.src=ev.target.result};reader.readAsDataURL(file)}
-  function handleAssetFiles(fileList){
-    var files = Array.from(fileList || []).filter(function(file){ return file && file.type.indexOf("image/")===0; });
-    if(files.length===0){
-      setAssetMessage("이미지 파일을 선택해주세요.");
-      return;
-    }
-    setAssetLoading(true);
-    Promise.all(files.map(readFileAsset)).then(function(assets){
-      appendAssets(assets);
-      setAssetMessage(assets.length + "개의 로컬 에셋을 트레이에 추가했습니다.");
-    }).catch(function(){
-      setAssetMessage("일부 로컬 에셋을 읽지 못했습니다.");
-    }).finally(function(){
-      setAssetLoading(false);
-      if(assetFileRef.current) assetFileRef.current.value = "";
+  function getSnapshotResolvedSize(snapshot, size){
+    if(!size) return null;
+    var override = snapshot && snapshot.boardSizeOverrides ? snapshot.boardSizeOverrides[size.id] : null;
+    if(!override) return size;
+    return Object.assign({}, size, {
+      w: override.w != null ? override.w : size.w,
+      h: override.h != null ? override.h : size.h
     });
   }
-  function importAssetUrls(){
-    var urls = assetUrlInput.split(/\r?\n/).map(function(line){ return line.trim(); }).filter(Boolean);
-    if(urls.length===0){
-      setAssetMessage("이미지 URL을 한 줄에 하나씩 입력해주세요.");
-      return;
+  function getSnapshotSizeById(snapshot, sid){
+    var baseSizes = ALL_SIZES.concat(snapshot.customSizes || []);
+    var size = baseSizes.find(function(item){ return item.id===sid; });
+    return getSnapshotResolvedSize(snapshot, size);
+  }
+  function getSnapshotOv(snapshot, sid, lid){
+    var def = snapshot.boardDefaults && snapshot.boardDefaults[sid] ? snapshot.boardDefaults[sid][lid] || {} : {};
+    var ov = snapshot.overrides && snapshot.overrides[sid] ? snapshot.overrides[sid][lid] || {} : {};
+    return Object.assign({}, def, ov);
+  }
+  function getSnapshotLayerForBoard(snapshot, sid, layer){
+    return Object.assign({}, layer, getSnapshotOv(snapshot, sid, layer.id));
+  }
+  function getSnapshotElRect(snapshot, sid, layer){
+    var sz=getSnapshotSizeById(snapshot,sid);if(!sz)return{x:0,y:0,w:100,h:100,fs:12};
+    var ov=getSnapshotOv(snapshot,sid,layer.id);
+    var sa=getSafe(sz);
+    var sw=sz.w-sa.l-sa.r, sh=sz.h-sa.t-sa.b;
+    var lo=computeLayout(sw,sh);
+    if(layer.type==="image"){
+      var reg=lo.image;
+      var regW_px=(reg.w/100)*sw;
+      var regH_px=(reg.h/100)*sh;
+      var size_px=Math.min(regW_px, regH_px);
+      var cx_px=sa.l + (reg.x/100)*sw + regW_px/2;
+      var cy_px=sa.t + (reg.y/100)*sh + regH_px/2;
+      return {
+        x: ov.x != null ? ov.x : (cx_px - size_px/2) / sz.w * 100,
+        y: ov.y != null ? ov.y : (cy_px - size_px/2) / sz.h * 100,
+        w: ov.w != null ? ov.w : (size_px / sz.w) * 100,
+        h: ov.h != null ? ov.h : (size_px / sz.h) * 100
+      };
     }
-    setAssetLoading(true);
-    Promise.allSettled(urls.map(fetchUrlAsAsset)).then(function(results){
-      var assets = results.filter(function(item){ return item.status==="fulfilled"; }).map(function(item){ return item.value; });
-      var failed = results.length - assets.length;
-      appendAssets(assets);
-      if(assets.length && failed===0) setAssetMessage(assets.length + "개의 URL 에셋을 가져왔습니다.");
-      else if(assets.length) setAssetMessage(assets.length + "개를 추가했고, " + failed + "개는 CORS 또는 응답 문제로 실패했습니다.");
-      else setAssetMessage("URL 에셋을 가져오지 못했습니다. 공개 이미지 URL과 CORS 허용 여부를 확인해주세요.");
-      if(assets.length) setAssetUrlInput("");
-    }).finally(function(){
-      setAssetLoading(false);
+    var tReg=layoutRegion(lo,layer.role);
+    var rm=ROLES.find(function(r){return r.key===layer.role});
+    var fs=ov.fs!=null?ov.fs:scaleFS(layer.size,sw,rm?rm.min:8);
+    var rx=(sa.l+(tReg.x/100)*sw)/sz.w*100;
+    var ry=(sa.t+(tReg.y/100)*sh)/sz.h*100;
+    var rw=(tReg.w/100)*sw/sz.w*100;
+    var rh=(tReg.h/100)*sh/sz.h*100;
+    if(layer.type==="text"){
+      var textContent = String(layer.content || "");
+      var measurementText = getMeasurementText(textContent);
+      var manualBox = !!ov.manualBox;
+      var usesManualWidth = manualBox && ov.w!=null;
+      var constrainedWidthPx = usesManualWidth ? (ov.w / 100) * sz.w : null;
+      var measured = measureTextBlock(measurementText, fs, layer.font, layer.weight, layer.lh, layer.role==="cta" ? null : constrainedWidthPx);
+      var intrinsicW = (measured.width / sz.w) * 100;
+      var intrinsicH = (measured.height / sz.h) * 100;
+      if(layer.role==="cta" && layer.bg){
+        intrinsicW = ((measured.width + fs * 0.6) / sz.w) * 100;
+        intrinsicH = ((measured.height + fs * 0.4) / sz.h) * 100;
+      }
+      var defaultW = clamp(intrinsicW, 2, 200);
+      var defaultH = clamp(intrinsicH, 2, 200);
+      var defaultX = rx;
+      var defaultY = ry;
+      var resolvedW = manualBox && ov.w != null ? ov.w : defaultW;
+      var resolvedH = manualBox && ov.h != null ? Math.max(ov.h, defaultH) : defaultH;
+      if(layer.align==="center") defaultX = rx + ((rw - resolvedW) / 2);
+      if(layer.align==="right") defaultX = rx + (rw - resolvedW);
+      if(layer.role==="cta") defaultY = ry + ((rh - defaultH) / 2);
+      return {x:ov.x!=null?ov.x:defaultX,y:ov.y!=null?ov.y:defaultY,w:resolvedW,h:resolvedH,fs:fs};
+    }
+    return{x:ov.x!=null?ov.x:rx,y:ov.y!=null?ov.y:ry,w:ov.w!=null?ov.w:rw,h:ov.h!=null?ov.h:rh,fs:fs};
+  }
+  function loadImageElement(src){
+    return new Promise(function(resolve){
+      if(!src) return resolve(null);
+      var image = new Image();
+      image.crossOrigin = "anonymous";
+      image.onload = function(){ resolve(image); };
+      image.onerror = function(){ resolve(null); };
+      image.src = src;
     });
   }
-  function removeAsset(assetId){
-    setAssetLibrary(function(prev){ return prev.filter(function(asset){ return asset.id!==assetId; }); });
+  function findSquareThumbnailBoard(snapshot){
+    var selected = (snapshot.selIds || []).map(function(id){ return getSnapshotSizeById(snapshot, id); }).filter(Boolean);
+    return selected.find(function(size){ return Math.abs(size.w - size.h) < 1; }) || null;
+  }
+  function renderSnapshotThumbnail(snapshot, sz){
+    if(!snapshot || !sz) return Promise.resolve(null);
+    return document.fonts.ready.then(function(){
+      var scale = 240 / Math.max(sz.w, sz.h);
+      var canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(sz.w * scale));
+      canvas.height = Math.max(1, Math.round(sz.h * scale));
+      var ctx = canvas.getContext("2d");
+      ctx.scale(scale, scale);
+      ctx.fillStyle = snapshot.bgColor || "#0f0f0f";
+      ctx.fillRect(0,0,sz.w,sz.h);
+      var sorted = (snapshot.layers || []).slice().sort(function(a,b){ return a.zIndex-b.zIndex; });
+      return Promise.all(sorted.map(function(baseLayer){
+        var layer = getSnapshotLayerForBoard(snapshot, sz.id, baseLayer);
+        if(!layer.visible || layer.hidden) return Promise.resolve();
+        var er=getSnapshotElRect(snapshot,sz.id,layer);var dx=sz.w*er.x/100,dy=sz.h*er.y/100,dw=sz.w*er.w/100,dh=sz.h*er.h/100;
+        if(layer.type==="image"){
+          return loadImageElement(layer.src).then(function(image){
+            if(!image) return;
+            var ov = getSnapshotOv(snapshot, sz.id, layer.id);
+            var imgS = ov.imgS != null ? ov.imgS : 1;
+            var imgX = ov.imgX != null ? ov.imgX : 0;
+            var imgY = ov.imgY != null ? ov.imgY : 0;
+            var nw=image.naturalWidth,nh=image.naturalHeight;
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(dx, dy, dw, dh);
+            ctx.clip();
+            var coverR = Math.max(dw/nw, dh/nh);
+            var baseW = nw * coverR;
+            var baseH = nh * coverR;
+            var cx = dx + dw/2 + (dw * imgX / 100);
+            var cy = dy + dh/2 + (dh * imgY / 100);
+            var finalW = baseW * imgS;
+            var finalH = baseH * imgS;
+            ctx.drawImage(image, cx - finalW/2, cy - finalH/2, finalW, finalH);
+            ctx.restore();
+          });
+        }
+        if(layer.type==="text"){
+          var fs=er.fs;if(fs<=0)return Promise.resolve();
+          ctx.font=layer.weight+" "+fs+'px "'+layer.font+'","Noto Sans KR",sans-serif';
+          var tx,ty=dy+dh/2;
+          if(layer.align==="center"){ctx.textAlign="center";tx=dx+dw/2}else if(layer.align==="right"){ctx.textAlign="right";tx=dx+dw}else{ctx.textAlign="left";tx=dx}
+          if(layer.role==="cta"&&layer.bg){
+            var met=ctx.measureText(layer.content);var pH=fs*0.3,pV=fs*0.2;var bw=met.width+pH*2,bh=fs+pV*2;var bx=tx-bw/2,by=ty-bh/2;if(layer.align==="left")bx=tx;if(layer.align==="right")bx=tx-bw;ctx.fillStyle=layer.bg;ctx.beginPath();var rd=Math.min(fs*.2,bh/3);ctx.moveTo(bx+rd,by);ctx.lineTo(bx+bw-rd,by);ctx.quadraticCurveTo(bx+bw,by,bx+bw,by+rd);ctx.lineTo(bx+bw,by+bh-rd);ctx.quadraticCurveTo(bx+bw,by+bh,bx+bw-rd,by+bh);ctx.lineTo(bx+rd,by+bh);ctx.quadraticCurveTo(bx,by+bh,bx,by+bh-rd);ctx.lineTo(bx,by+rd);ctx.quadraticCurveTo(bx,by,bx+rd,by);ctx.closePath();ctx.fill();ctx.textBaseline="middle";ctx.fillStyle=layer.color;ctx.fillText(layer.content,tx,ty);
+            return Promise.resolve();
+          }
+          ctx.textBaseline="top";ctx.fillStyle=layer.color;var lines=String(layer.content||"").split("\n");var lineH=fs*layer.lh;var startY=dy;lines.forEach(function(line,index){ctx.fillText(line,tx,startY+(index*lineH));});
+        }
+        return Promise.resolve();
+      })).then(function(){
+        try{return canvas.toDataURL("image/png")}catch(err){return null}
+      });
+    });
+  }
+  async function handleSaveProjectSnapshot(){
+    var snapshot = buildProjectSnapshot();
+    var defaultName = formatSnapshotDefaultName(new Date());
+    var finalName = (saveNameDraft || defaultName).trim() || defaultName;
+    setSaveBusy(true);
+    try{
+      var squareBoard = findSquareThumbnailBoard(snapshot);
+      var thumbnail = squareBoard ? await renderSnapshotThumbnail(snapshot, squareBoard) : null;
+      var entry = {id:"snapshot-"+Date.now(),name:finalName,savedAt:new Date().toISOString(),thumbnail:thumbnail,thumbBoardId:squareBoard?squareBoard.id:null,thumbRatio:squareBoard?getAspectRatioLabel(squareBoard.w, squareBoard.h):null,snapshot:snapshot};
+      var nextList = [entry].concat(savedProjects).slice(0, 30);
+      persistSavedProjects(nextList);
+      setSaveNameDraft("");
+      setSaveMessage("작업 상태를 저장했습니다: " + finalName);
+    }catch(err){
+      setSaveMessage("저장 중 문제가 발생했습니다.");
+    }finally{
+      setSaveBusy(false);
+    }
+  }
+  function handleLoadProjectSnapshot(entry){
+    if(!entry || !entry.snapshot) return;
+    var confirmed = window.confirm("현재 작업하던 캔버스 내 저장되지 않은 것들은 사라질 수 있습니다. 정말 불러오시겠습니까?");
+    if(!confirmed) return;
+    applyProjectSnapshot(entry.snapshot);
+    setSaveMessage("저장본을 불러왔습니다: " + entry.name);
+  }
+  function handleDeleteProjectSnapshot(entryId){
+    persistSavedProjects(savedProjects.filter(function(item){ return item.id !== entryId; }));
+    setSaveMessage("저장본을 삭제했습니다.");
   }
   
   function handleAddCustomFont() {
@@ -1430,36 +1578,39 @@ return React.createElement("div",{className:"app-shell",style:{width:"100%",heig
       )
     ),
 
-    React.createElement("div",{style:{height:200,background:MD.surface,borderTop:"1px solid "+MD.line,display:"flex",flexDirection:"column",flexShrink:0,boxShadow:"0 -4px 16px rgba(15,23,42,.04)"}},
+    React.createElement("div",{style:{height:220,background:MD.surface,borderTop:"1px solid "+MD.line,display:"flex",flexDirection:"column",flexShrink:0,boxShadow:"0 -4px 16px rgba(15,23,42,.04)"}},
       React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,padding:"14px 16px 10px",borderBottom:"1px solid "+MD.line}},
-        React.createElement("div",{style:{fontSize:10,color:"#666",textTransform:"uppercase",letterSpacing:".08em",fontWeight:700}},"Asset Tray"),
-        React.createElement("div",{style:{fontSize:11,color:MD.muted}},"썸네일 클릭 시 메인 비주얼 즉시 교체"),
-        React.createElement("div",{style:{marginLeft:"auto",fontSize:11,color:assetLoading?MD.primary:MD.muted}},assetLoading?"불러오는 중...":assetMessage)
+        React.createElement("div",{style:{fontSize:10,color:"#666",textTransform:"uppercase",letterSpacing:".08em",fontWeight:700}},"Saved History"),
+        React.createElement("div",{style:{fontSize:11,color:MD.muted}},"현재 작업 상태를 저장하고 불러오기"),
+        React.createElement("div",{style:{marginLeft:"auto",fontSize:11,color:saveBusy?MD.primary:MD.muted}},saveBusy?"저장 중...":saveMessage)
       ),
       React.createElement("div",{style:{display:"flex",gap:14,padding:"14px 16px",minHeight:0,flex:1}},
-        React.createElement("div",{style:{width:260,display:"flex",flexDirection:"column",gap:8,flexShrink:0}},
-          React.createElement("button",{onClick:function(){assetFileRef.current&&assetFileRef.current.click();},style:{padding:"8px 10px",borderRadius:4,border:"1px dashed #333",background:"#111",color:"#aaa",cursor:"pointer",fontSize:11,fontFamily:"inherit"}},"+ 로컬 에셋 추가"),
-          React.createElement("input",{ref:assetFileRef,type:"file",accept:"image/*",multiple:true,onChange:function(e){handleAssetFiles(e.target.files);},style:{display:"none"}}),
-          React.createElement("textarea",{value:assetUrlInput,onChange:function(e){setAssetUrlInput(e.target.value);},placeholder:"이미지 URL을 한 줄에 하나씩 붙여넣으세요",rows:5,style:{background:"#111",border:"1px solid #222",borderRadius:4,padding:"8px 10px",color:"#bbb",fontSize:11,fontFamily:"'JetBrains Mono',monospace",resize:"none",width:"100%",boxSizing:"border-box"}}),
-          React.createElement("button",{onClick:importAssetUrls,disabled:assetLoading,style:{padding:"7px 10px",borderRadius:4,border:"none",background:assetLoading?"#222":"linear-gradient(135deg,#00d4ff,#0099cc)",color:assetLoading?"#555":"#001018",cursor:assetLoading?"default":"pointer",fontSize:11,fontWeight:700,fontFamily:"inherit"}},"URL 에셋 불러오기")
+        React.createElement("div",{style:{width:280,display:"flex",flexDirection:"column",gap:8,flexShrink:0}},
+          React.createElement("div",{style:{fontSize:11,color:MD.text,fontWeight:700}},"현재 상태 저장"),
+          React.createElement("input",{type:"text",value:saveNameDraft,onChange:function(e){setSaveNameDraft(e.target.value);},placeholder:formatSnapshotDefaultName(new Date()),style:{background:"#111",border:"1px solid #222",borderRadius:10,padding:"10px 12px",color:"#ddd",fontSize:11,fontFamily:"inherit",width:"100%",boxSizing:"border-box"}}),
+          React.createElement("div",{style:{fontSize:10,color:MD.muted,lineHeight:1.6}},"저장명을 비워두면 오늘 날짜와 시간으로 자동 저장됩니다."),
+          React.createElement("button",{onClick:handleSaveProjectSnapshot,disabled:saveBusy,style:{padding:"9px 12px",borderRadius:10,border:"none",background:saveBusy?"#222":"linear-gradient(135deg,#7cc4ff,#4da2ff)",color:saveBusy?"#667085":"#08111b",cursor:saveBusy?"default":"pointer",fontSize:11,fontWeight:700,fontFamily:"inherit"}},"현재 작업 저장"),
+          React.createElement("div",{style:{fontSize:10,color:"#64748b",lineHeight:1.6,padding:"10px 12px",border:"1px dashed "+MD.line,borderRadius:12,background:"rgba(255,255,255,.02)"}},"불러오기 전에는 경고창으로 현재 저장되지 않은 변경사항이 사라질 수 있음을 다시 확인합니다.")
         ),
         React.createElement("div",{style:{flex:1,minWidth:0,overflowX:"auto",overflowY:"hidden"}},
-          assetLibrary.length===0
-            ?React.createElement("div",{style:{height:"100%",minHeight:110,border:"1px dashed #222",borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",color:"#333",fontSize:12,textAlign:"center",padding:20}}, "에셋을 추가하면 이곳에 썸네일이 쌓입니다.")
-            :React.createElement("div",{style:{display:"flex",gap:10,height:"100%"}},
-                assetLibrary.map(function(asset){
-                  var isActive = imgLayer && imgLayer.src===asset.src;
-                  return React.createElement("div",{key:asset.id,style:{width:144,flexShrink:0,border:isActive?"1px solid #00d4ff":"1px solid #222",borderRadius:6,background:isActive?"rgba(0,212,255,.06)":"#111",overflow:"hidden",display:"flex",flexDirection:"column"}},
-                    React.createElement("button",{onClick:function(){applyAsset(asset);},style:{border:"none",padding:0,background:"transparent",cursor:"pointer",textAlign:"left",color:"inherit"}},
-                      React.createElement("div",{style:{height:96,background:"#0a0a0a"}},React.createElement("img",{src:asset.src,alt:asset.name,style:{width:"100%",height:"100%",objectFit:"cover",display:"block"}})),
-                      React.createElement("div",{style:{padding:"8px 9px 6px"}},
-                        React.createElement("div",{style:{fontSize:10,color:isActive?"#00d4ff":"#ccc",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},asset.name),
-                        React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:3}},(asset.w||0)+"×"+(asset.h||0)+" · "+asset.origin)
-                      )
+          savedProjects.length===0
+            ?React.createElement("div",{style:{height:"100%",minHeight:120,border:"1px dashed #222",borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",color:"#475569",fontSize:12,textAlign:"center",padding:20}},"저장된 작업 히스토리가 아직 없습니다.")
+            :React.createElement("div",{style:{display:"flex",gap:12,height:"100%"}},
+                savedProjects.map(function(entry){
+                  return React.createElement("div",{key:entry.id,style:{width:184,flexShrink:0,border:"1px solid #222",borderRadius:12,background:"#111",overflow:"hidden",display:"flex",flexDirection:"column"}},
+                    React.createElement("div",{style:{height:108,background:"#0a0a0a",display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}},
+                      entry.thumbnail
+                        ?React.createElement("img",{src:entry.thumbnail,alt:entry.name,style:{width:"100%",height:"100%",objectFit:"cover",display:"block"}})
+                        :React.createElement("div",{style:{padding:12,textAlign:"center",fontSize:11,color:"#475569",lineHeight:1.5}},"정방형 배너 썸네일 없음")
                     ),
-                    React.createElement("div",{style:{display:"flex",gap:6,padding:"0 9px 8px"}},
-                      React.createElement("button",{onClick:function(){applyAsset(asset);},style:{flex:1,padding:"5px 0",border:"none",borderRadius:4,background:isActive?"rgba(0,212,255,.12)":"#171717",color:isActive?"#00d4ff":"#999",cursor:"pointer",fontSize:10,fontFamily:"inherit"}},isActive?"적용됨":"적용"),
-                      React.createElement("button",{onClick:function(){removeAsset(asset.id);},style:{padding:"5px 8px",border:"1px solid #2a1515",borderRadius:4,background:"transparent",color:"#a55",cursor:"pointer",fontSize:10,fontFamily:"inherit"}},"삭제")
+                    React.createElement("div",{style:{padding:"10px 10px 8px"}},
+                      React.createElement("div",{style:{fontSize:11,color:"#e2e8f0",fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},entry.name),
+                      React.createElement("div",{style:{fontSize:10,color:"#64748b",marginTop:4}},formatSnapshotSavedAt(entry.savedAt)),
+                      React.createElement("div",{style:{fontSize:10,color:"#64748b",marginTop:2}},entry.thumbRatio ? "정방형 썸네일 기준 " + entry.thumbRatio : "정방형 배너 없음")
+                    ),
+                    React.createElement("div",{style:{display:"flex",gap:6,padding:"0 10px 10px"}},
+                      React.createElement("button",{onClick:function(){handleLoadProjectSnapshot(entry);},style:{flex:1,padding:"6px 0",border:"none",borderRadius:8,background:"rgba(124,196,255,.14)",color:MD.primary,cursor:"pointer",fontSize:10,fontWeight:700,fontFamily:"inherit"}},"Load"),
+                      React.createElement("button",{onClick:function(){handleDeleteProjectSnapshot(entry.id);},style:{padding:"6px 10px",border:"1px solid rgba(255,123,114,.24)",borderRadius:8,background:"transparent",color:MD.danger,cursor:"pointer",fontSize:10,fontFamily:"inherit"}},"삭제")
                     )
                   );
                 })
