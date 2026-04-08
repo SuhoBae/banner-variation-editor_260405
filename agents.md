@@ -343,6 +343,12 @@ Situation: Multi-artboard selection worked with `Ctrl/Cmd + click` and marquee d
 
 Resolution: Expanded additive board-selection detection so `Shift` behaves the same as `Ctrl/Cmd` for both direct artboard clicks and empty-canvas marquee selection. This keeps the single `selectedBoardIds` model intact while making multi-selection faster and more ergonomic.
 
+[2026-04-08] Conditional Vite Base for Vercel and GitHub Pages
+
+Situation: After enabling GitHub Pages deployment, the Vite `base` path was hard-coded to `/banner-variation-editor_260405/`. That works for Pages, but Vercel serves the app from the domain root, so the production HTML referenced `/banner-variation-editor_260405/assets/...` and loaded a blank white page because the first script returned `404`.
+
+Resolution: Changed `vite.config.js` to use the repo base only when `GITHUB_ACTIONS` is present, and `/` everywhere else. This keeps GitHub Pages builds working while restoring correct root-relative asset URLs for Vercel deployments.
+
 [2026-04-08] LGE.COM Banner Preset Sizes and Layout Defaults
 
 Situation: The editor's default board catalog and auto-layout still reflected generic ad sizes, while the user needed the initial LGE.COM banner set to match eight supplied PNG references in board size, Korean copy, and the default placement of text and image regions.

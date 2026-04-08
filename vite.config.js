@@ -1,5 +1,5 @@
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  base: "/banner-variation-editor_260405/",
+  base: process.env.GITHUB_ACTIONS ? "/banner-variation-editor_260405/" : "/",
 });
