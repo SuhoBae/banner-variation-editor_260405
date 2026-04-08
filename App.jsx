@@ -3,9 +3,12 @@
 import NumberInput from "./src/adcanvas/components/NumberInput.jsx";
 import ResizeHandles from "./src/adcanvas/components/ResizeHandles.jsx";
 import LayerListPanel from "./src/adcanvas/components/LayerListPanel.jsx";
+import headerAvatar from "./src/assets/header-avatar.png";
 
 var SNAPSHOT_STORAGE_KEY = "banner-variation-editor:snapshots";
 var HISTORY_LIMIT = 50;
+var CTA_PAD_X_PX = 6;
+var CTA_PAD_Y_PX = 4;
 
 var FONTS = [
   {family:"Pretendard",weights:[300,400,500,600,700,800,900]},
@@ -850,8 +853,8 @@ export default function App(){
     var nextW = er.w, nextH = er.h;
     if(layer.role==="cta" && layer.bg){
       var ctaMeasure = measureTextBlock(String(layer.content || ""), er.fs, layer.font, layer.weight, 1, null);
-      var pH = er.fs * 0.3;
-      var pV = er.fs * 0.2;
+      var pH = CTA_PAD_X_PX;
+      var pV = CTA_PAD_Y_PX;
       nextW = ((ctaMeasure.width + pH * 2) / sz.w) * 100;
       nextH = ((ctaMeasure.height + pV * 2) / sz.h) * 100;
     } else {
@@ -914,8 +917,8 @@ export default function App(){
       var intrinsicW = (measured.width / sz.w) * 100;
       var intrinsicH = (measured.height / sz.h) * 100;
       if(layer.role==="cta" && layer.bg){
-        intrinsicW = ((measured.width + fs * 0.6) / sz.w) * 100;
-        intrinsicH = ((measured.height + fs * 0.4) / sz.h) * 100;
+        intrinsicW = ((measured.width + CTA_PAD_X_PX * 2) / sz.w) * 100;
+        intrinsicH = ((measured.height + CTA_PAD_Y_PX * 2) / sz.h) * 100;
       }
       var defaultW = clamp(intrinsicW, 2, 200);
       var defaultH = clamp(intrinsicH, 2, 200);
@@ -1316,7 +1319,7 @@ export default function App(){
           var tx,ty=dy+dh/2;
           if(layer.align==="center"){ctx.textAlign="center";tx=dx+dw/2}else if(layer.align==="right"){ctx.textAlign="right";tx=dx+dw}else{ctx.textAlign="left";tx=dx}
           if(layer.role==="cta"&&layer.bg){
-            var met=ctx.measureText(layer.content);var pH=fs*0.3,pV=fs*0.2;var bw=met.width+pH*2,bh=fs+pV*2;var bx=tx-bw/2,by=ty-bh/2;if(layer.align==="left")bx=tx;if(layer.align==="right")bx=tx-bw;ctx.fillStyle=layer.bg;ctx.beginPath();var rd=Math.min(fs*.2,bh/3);ctx.moveTo(bx+rd,by);ctx.lineTo(bx+bw-rd,by);ctx.quadraticCurveTo(bx+bw,by,bx+bw,by+rd);ctx.lineTo(bx+bw,by+bh-rd);ctx.quadraticCurveTo(bx+bw,by+bh,bx+bw-rd,by+bh);ctx.lineTo(bx+rd,by+bh);ctx.quadraticCurveTo(bx,by+bh,bx,by+bh-rd);ctx.lineTo(bx,by+rd);ctx.quadraticCurveTo(bx,by,bx+rd,by);ctx.closePath();ctx.fill();ctx.textBaseline="middle";ctx.fillStyle=layer.color;ctx.fillText(layer.content,tx,ty);
+            var met=ctx.measureText(layer.content);var pH=CTA_PAD_X_PX,pV=CTA_PAD_Y_PX;var bw=met.width+pH*2,bh=fs+pV*2;var bx=tx-bw/2,by=ty-bh/2;if(layer.align==="left")bx=tx;if(layer.align==="right")bx=tx-bw;ctx.fillStyle=layer.bg;ctx.beginPath();var rd=Math.min(fs*.2,bh/3);ctx.moveTo(bx+rd,by);ctx.lineTo(bx+bw-rd,by);ctx.quadraticCurveTo(bx+bw,by,bx+bw,by+rd);ctx.lineTo(bx+bw,by+bh-rd);ctx.quadraticCurveTo(bx+bw,by+bh,bx+bw-rd,by+bh);ctx.lineTo(bx+rd,by+bh);ctx.quadraticCurveTo(bx,by+bh,bx,by+bh-rd);ctx.lineTo(bx,by+rd);ctx.quadraticCurveTo(bx,by,bx+rd,by);ctx.closePath();ctx.fill();ctx.textBaseline="middle";ctx.fillStyle=layer.color;ctx.fillText(layer.content,tx,ty);
             return Promise.resolve();
           }
           ctx.textBaseline="top";ctx.fillStyle=layer.color;var lines=String(layer.content||"").split("\n");var lineH=fs*layer.lh;var startY=dy;lines.forEach(function(line,index){ctx.fillText(line,tx,startY+(index*lineH));});
@@ -1435,7 +1438,7 @@ export default function App(){
         ctx.restore();
       });
     }else if(layer.type==="text"){
-      var fs=er.fs;if(fs<=0)return Promise.resolve();ctx.font=layer.weight+" "+fs+'px "'+layer.font+'","Pretendard","Noto Sans KR",sans-serif';var tx,ty=dy+dh/2;if(layer.align==="center"){ctx.textAlign="center";tx=dx+dw/2}else if(layer.align==="right"){ctx.textAlign="right";tx=dx+dw}else{ctx.textAlign="left";tx=dx}if(layer.role==="cta"&&layer.bg){var met=ctx.measureText(layer.content);var pH=fs*0.3,pV=fs*0.2;var bw=met.width+pH*2,bh=fs+pV*2;var bx=tx-bw/2,by=ty-bh/2;if(layer.align==="left")bx=tx;if(layer.align==="right")bx=tx-bw;ctx.fillStyle=layer.bg;ctx.beginPath();var rd=Math.min(fs*.2,bh/3);ctx.moveTo(bx+rd,by);ctx.lineTo(bx+bw-rd,by);ctx.quadraticCurveTo(bx+bw,by,bx+bw,by+rd);ctx.lineTo(bx+bw,by+bh-rd);ctx.quadraticCurveTo(bx+bw,by+bh,bx+bw-rd,by+bh);ctx.lineTo(bx+rd,by+bh);ctx.quadraticCurveTo(bx,by+bh,bx,by+bh-rd);ctx.lineTo(bx,by+rd);ctx.quadraticCurveTo(bx,by,bx+rd,by);ctx.closePath();ctx.fill();ctx.textBaseline="middle";ctx.fillStyle=layer.color;ctx.fillText(layer.content,tx,ty);}else{ctx.textBaseline="top";ctx.fillStyle=layer.color;var lines=layer.content.split("\n");var lineH=fs*(layer.lh || DEFAULT_LINE_HEIGHT);var startY=dy;for(var li=0;li<lines.length;li++){ctx.fillText(lines[li],tx,startY+(li*lineH));}}}
+      var fs=er.fs;if(fs<=0)return Promise.resolve();ctx.font=layer.weight+" "+fs+'px "'+layer.font+'","Pretendard","Noto Sans KR",sans-serif';var tx,ty=dy+dh/2;if(layer.align==="center"){ctx.textAlign="center";tx=dx+dw/2}else if(layer.align==="right"){ctx.textAlign="right";tx=dx+dw}else{ctx.textAlign="left";tx=dx}if(layer.role==="cta"&&layer.bg){var met=ctx.measureText(layer.content);var pH=CTA_PAD_X_PX,pV=CTA_PAD_Y_PX;var bw=met.width+pH*2,bh=fs+pV*2;var bx=tx-bw/2,by=ty-bh/2;if(layer.align==="left")bx=tx;if(layer.align==="right")bx=tx-bw;ctx.fillStyle=layer.bg;ctx.beginPath();var rd=Math.min(fs*.2,bh/3);ctx.moveTo(bx+rd,by);ctx.lineTo(bx+bw-rd,by);ctx.quadraticCurveTo(bx+bw,by,bx+bw,by+rd);ctx.lineTo(bx+bw,by+bh-rd);ctx.quadraticCurveTo(bx+bw,by+bh,bx+bw-rd,by+bh);ctx.lineTo(bx+rd,by+bh);ctx.quadraticCurveTo(bx,by+bh,bx,by+bh-rd);ctx.lineTo(bx,by+rd);ctx.quadraticCurveTo(bx,by,bx+rd,by);ctx.closePath();ctx.fill();ctx.textBaseline="middle";ctx.fillStyle=layer.color;ctx.fillText(layer.content,tx,ty);}else{ctx.textBaseline="top";ctx.fillStyle=layer.color;var lines=layer.content.split("\n");var lineH=fs*(layer.lh || DEFAULT_LINE_HEIGHT);var startY=dy;for(var li=0;li<lines.length;li++){ctx.fillText(lines[li],tx,startY+(li*lineH));}}}
     return Promise.resolve();
   })).then(function(){return c})})}
   function exportOne(sz){return renderExportCanvas(sz).then(function(c){return new Promise(function(resolve){c.toBlob(function(blob){var url=URL.createObjectURL(blob);var a=document.createElement("a");a.href=url;a.download="App_"+sz.w+"x"+sz.h+"_"+sz.label.replace(/[\s/:]+/g,"_")+".png";document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);resolve()},"image/png")})})}
@@ -1543,9 +1546,9 @@ export default function App(){
               ),
               isSel&&React.createElement("div",{onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")},style:{position:"absolute",top:-8,left:0,fontSize:labelFontSize,color:MD.primary,lineHeight:1,pointerEvents:"auto",whiteSpace:"nowrap",fontWeight:700,letterSpacing:".02em",cursor:spaceHeld?"grab":"move"}},getLayerDisplayName(layer)),
               isEditingText
-                ?React.createElement("textarea",{ref:editingRef,id:"layer-content-"+sz.id+"-"+layer.id,value:editingDraftValue,spellCheck:false,wrap:textUsesManualBox?"soft":"off",onClick:function(e){e.stopPropagation();},onMouseDown:function(e){e.stopPropagation();},onCompositionStart:function(){isComposingRef.current=true;},onCompositionEnd:function(e){isComposingRef.current=false;requestAnimationFrame(function(){syncEditingTextarea(e.target);setTick(function(c){return c+1});});},onChange:function(e){editingDraftRef.current=e.target.value;setEditingDraftValue(e.target.value);requestAnimationFrame(function(){syncEditingTextarea(e.target);setTick(function(c){return c+1});});},onBlur:function(){if(isComposingRef.current) return; commitEditingText(sz.id,layer.id,false);},onKeyDown:function(e){if(e.key==="Enter"){requestAnimationFrame(function(){syncEditingTextarea(e.currentTarget);setTick(function(c){return c+1});});} if(e.key==="Escape"){e.preventDefault();commitEditingText(sz.id,layer.id,true);e.currentTarget.blur();}},style:{position:"absolute",top:0,left:0,whiteSpace:textUsesManualBox?"pre-wrap":"pre",wordBreak:"keep-all",display:"block",width:"100%",minWidth:"100%",maxWidth:"100%",height:"100%",minHeight:"100%",padding:isCta?(dfs*0.2)+"px "+(dfs*0.3)+"px":0,margin:0,border:"none",background:isCta&&layer.bg?layer.bg:"transparent",borderRadius:isCta&&layer.bg?999:0,outline:"none",overflow:"hidden",resize:"none",cursor:"text",color:"inherit",font:"inherit",letterSpacing:"inherit",lineHeight:"inherit",textAlign:layer.align,boxSizing:"border-box",scrollbarWidth:"none",msOverflowStyle:"none",boxShadow:isCta&&layer.bg?"0 1px 3px rgba(0,0,0,.12)":"none"}}) 
+                ?React.createElement("textarea",{ref:editingRef,id:"layer-content-"+sz.id+"-"+layer.id,value:editingDraftValue,spellCheck:false,wrap:textUsesManualBox?"soft":"off",onClick:function(e){e.stopPropagation();},onMouseDown:function(e){e.stopPropagation();},onCompositionStart:function(){isComposingRef.current=true;},onCompositionEnd:function(e){isComposingRef.current=false;requestAnimationFrame(function(){syncEditingTextarea(e.target);setTick(function(c){return c+1});});},onChange:function(e){editingDraftRef.current=e.target.value;setEditingDraftValue(e.target.value);requestAnimationFrame(function(){syncEditingTextarea(e.target);setTick(function(c){return c+1});});},onBlur:function(){if(isComposingRef.current) return; commitEditingText(sz.id,layer.id,false);},onKeyDown:function(e){if(e.key==="Enter"){requestAnimationFrame(function(){syncEditingTextarea(e.currentTarget);setTick(function(c){return c+1});});} if(e.key==="Escape"){e.preventDefault();commitEditingText(sz.id,layer.id,true);e.currentTarget.blur();}},style:{position:"absolute",top:0,left:0,whiteSpace:textUsesManualBox?"pre-wrap":"pre",wordBreak:"keep-all",display:"block",width:"100%",minWidth:"100%",maxWidth:"100%",height:"100%",minHeight:"100%",padding:isCta?(CTA_PAD_Y_PX*boardScale)+"px "+(CTA_PAD_X_PX*boardScale)+"px":0,margin:0,border:"none",background:isCta&&layer.bg?layer.bg:"transparent",borderRadius:isCta&&layer.bg?999:0,outline:"none",overflow:"hidden",resize:"none",cursor:"text",color:"inherit",font:"inherit",letterSpacing:"inherit",lineHeight:"inherit",textAlign:layer.align,boxSizing:"border-box",scrollbarWidth:"none",msOverflowStyle:"none",boxShadow:isCta&&layer.bg?"0 1px 3px rgba(0,0,0,.12)":"none"}}) 
                 :isCta&&layer.bg
-                  ?React.createElement("span",{id:"layer-content-"+sz.id+"-"+layer.id,style:{position:"absolute",top:0,left:0,width:"100%",height:"100%",boxSizing:"border-box",background:layer.bg,padding:(dfs*0.2)+"px "+(dfs*0.3)+"px",borderRadius:999,whiteSpace:textUsesManualBox?"pre-wrap":"pre",wordBreak:"keep-all",display:"flex",alignItems:"center",justifyContent:layer.align==="center"?"center":layer.align==="right"?"flex-end":"flex-start",textAlign:layer.align,lineHeight:layer.lh||DEFAULT_LINE_HEIGHT,boxShadow:"0 1px 3px rgba(0,0,0,.12)"}} ,layer.content)
+                  ?React.createElement("span",{id:"layer-content-"+sz.id+"-"+layer.id,style:{position:"absolute",top:0,left:0,width:"100%",height:"100%",boxSizing:"border-box",background:layer.bg,padding:(CTA_PAD_Y_PX*boardScale)+"px "+(CTA_PAD_X_PX*boardScale)+"px",borderRadius:999,whiteSpace:textUsesManualBox?"pre-wrap":"pre",wordBreak:"keep-all",display:"flex",alignItems:"center",justifyContent:layer.align==="center"?"center":layer.align==="right"?"flex-end":"flex-start",textAlign:layer.align,lineHeight:layer.lh||DEFAULT_LINE_HEIGHT,boxShadow:"0 1px 3px rgba(0,0,0,.12)"}} ,layer.content)
                   :React.createElement("span",{id:"layer-content-"+sz.id+"-"+layer.id,style:{position:"absolute",top:0,left:0,whiteSpace:textUsesManualBox?"pre-wrap":"pre",wordBreak:"keep-all",display:"block",width:"100%",maxWidth:"100%",overflow:"visible",lineHeight:layer.lh||DEFAULT_LINE_HEIGHT,letterSpacing:(layer.ls||0)+"em"}},layer.content),
               isSel&&React.createElement(ResizeHandles,{sid:sz.id,lid:layer.id,beginDrag:beginDrag,fitLayerToContent:fitLayerToContent,allowVertical:true})
             )
@@ -1601,7 +1604,9 @@ return React.createElement("div",{className:"app-shell",style:{width:"100%",heig
       }
     },
       React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6}},
-        React.createElement("div",{style:{width:28,height:28,borderRadius:10,background:"linear-gradient(135deg,#1a73e8,#34a853)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:900,color:"#fff",boxShadow:"0 8px 16px rgba(26,115,232,.2)"}},"A"),
+        React.createElement("div",{style:{width:28,height:28,borderRadius:"50%",overflow:"hidden",border:"1px solid rgba(255,255,255,.16)",boxShadow:"0 8px 16px rgba(15,23,42,.22)",flexShrink:0,background:"#d9dee7"}},
+          React.createElement("img",{src:headerAvatar,alt:"",style:{width:"100%",height:"100%",display:"block",objectFit:"cover",objectPosition:"center top"}})
+        ),
         React.createElement("div",null,
           React.createElement("div",{style:{fontWeight:700,fontSize:14,color:MD.text}},"Banner Variation Editor")
         )
