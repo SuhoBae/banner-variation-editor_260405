@@ -106,6 +106,25 @@ var ROLES=[{key:"headline",label:"Headline",min:10},{key:"subheadline",label:"Su
 function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
 function getSafe(sz){var s=sz.safe;return s.pct?{t:sz.h*s.t/100,b:sz.h*s.b/100,l:sz.w*s.l/100,r:sz.w*s.r/100}:{t:s.t,b:s.b,l:s.l,r:s.r}}
 function contrast(a,b){function l(h){var v=[h.slice(1,3),h.slice(3,5),h.slice(5,7)].map(function(c){var x=parseInt(c,16)/255;return x<=.03928?x/12.92:Math.pow((x+.055)/1.055,2.4)});return .2126*v[0]+.7152*v[1]+.0722*v[2]}var l1=l(a),l2=l(b);return(Math.max(l1,l2)+.05)/(Math.min(l1,l2)+.05)}
+function getImagePlaceholderChrome(bg){
+  var prefersDark = contrast("#111111", bg) >= contrast("#ffffff", bg);
+  if(prefersDark){
+    return {
+      border:"rgba(17,17,17,0.24)",
+      fill:"rgba(17,17,17,0.055)",
+      stripe:"rgba(17,17,17,0.04)",
+      label:"rgba(17,17,17,0.62)",
+      shadow:"rgba(17,17,17,0.08)"
+    };
+  }
+  return {
+    border:"rgba(255,255,255,0.24)",
+    fill:"rgba(255,255,255,0.05)",
+    stripe:"rgba(255,255,255,0.035)",
+    label:"rgba(255,255,255,0.72)",
+    shadow:"rgba(0,0,0,0.14)"
+  };
+}
 function scaleFS(base,tw,min){return Math.max(min,Math.round(base*tw/BASE_W))}
 
 function computeLayout(w,h){
@@ -1428,7 +1447,7 @@ export default function App(){
   }
 
   function renderBoard(sz){
-    var dw=sz.w*boardScale,dh=sz.h*boardScale;var sa=getSafe(sz);var isAct=activeBoard===sz.id;var isBoardSelected=selectedBoardIds.indexOf(sz.id)!==-1;var isExp=!!exportChecked[sz.id];var lo=computeLayout(sz.w,sz.h);var mutated=boardHasChanges(sz.id);
+    var dw=sz.w*boardScale,dh=sz.h*boardScale;var sa=getSafe(sz);var isAct=activeBoard===sz.id;var isBoardSelected=selectedBoardIds.indexOf(sz.id)!==-1;var isExp=!!exportChecked[sz.id];var lo=computeLayout(sz.w,sz.h);var mutated=boardHasChanges(sz.id);var placeholderChrome=getImagePlaceholderChrome(bgColor);
     return React.createElement("div",{key:sz.id,style:{display:"inline-flex",flexDirection:"column",alignItems:"center",gap:6,flexShrink:0,verticalAlign:"top"}},
       React.createElement("label",{style:{display:"flex",alignItems:"center",gap:3,fontSize:9,cursor:"pointer",color:isExp?"#00d4ff":"#555",userSelect:"none"}},React.createElement("input",{type:"checkbox",checked:isExp,onChange:function(){setExportChecked(function(p){var n=Object.assign({},p);n[sz.id]=!p[sz.id];return n})},style:{accentColor:"#00d4ff"}}),"Export"),
       React.createElement("div",{"data-bid":sz.id,
@@ -1447,12 +1466,15 @@ export default function App(){
             
             return React.createElement("div",{key:layer.id,
               style:{position:"absolute",left:er.x+"%",top:er.y+"%",width:er.w+"%",height:er.h+"%",zIndex:isSel?15:layer.zIndex+2,display:"flex",alignItems:"center",justifyContent:"center",pointerEvents:"none"}}, 
-              React.createElement("div", {id: "layer-"+sz.id+"-"+layer.id, onClick:function(e){e.stopPropagation();activateLayerSelection(sz.id,layer.id,[layer.id]);}, onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")}, onContextMenu:function(e){handleContextMenuLayer(e, sz.id, layer.id)}, style:{position:"relative", display:"flex", width:"100%", height:"100%", maxWidth:"100%", maxHeight:"100%", border:isSel?"0.5px solid transparent":(layer.src?"0.5px solid transparent":"0.5px dashed rgba(255,255,255,0.15)"), boxShadow:isSel?"inset 0 0 0 1px rgba(124,196,255,.96), 0 0 0 1px rgba(124,196,255,0)":"none", background:layer.src?"transparent":"rgba(255,255,255,0.03)", pointerEvents:"auto", cursor:spaceHeld?"grab":"move", alignItems:"center", justifyContent:"center", flexDirection:"column", boxSizing:"border-box", overflow:"visible"}},
+              React.createElement("div", {id: "layer-"+sz.id+"-"+layer.id, onClick:function(e){e.stopPropagation();activateLayerSelection(sz.id,layer.id,[layer.id]);}, onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")}, onContextMenu:function(e){handleContextMenuLayer(e, sz.id, layer.id)}, style:{position:"relative", display:"flex", width:"100%", height:"100%", maxWidth:"100%", maxHeight:"100%", border:isSel?"0.5px solid transparent":(layer.src?"0.5px solid transparent":"0.5px dashed "+placeholderChrome.border), boxShadow:isSel?"inset 0 0 0 1px rgba(124,196,255,.96), 0 0 0 1px rgba(124,196,255,0)":(layer.src?"none":"inset 0 0 0 1px "+placeholderChrome.fill+", inset 0 18px 28px "+placeholderChrome.shadow+", 0 2px 6px "+placeholderChrome.shadow), background:layer.src?"transparent":"repeating-linear-gradient(135deg, "+placeholderChrome.fill+" 0px, "+placeholderChrome.fill+" 10px, "+placeholderChrome.stripe+" 10px, "+placeholderChrome.stripe+" 20px)", pointerEvents:"auto", cursor:spaceHeld?"grab":"move", alignItems:"center", justifyContent:"center", flexDirection:"column", boxSizing:"border-box", overflow:"visible"}},
                 layer.src ? React.createElement("div", {style:{width:"100%", height:"100%", overflow:"hidden", borderRadius:2}}, 
                               React.createElement("img",{src:layer.src,alt:"",draggable:false,style:{width:"100%",height:"100%",objectFit:"cover",transform:"translate("+imgX+"%,"+imgY+"%) scale("+imgS+")",pointerEvents:"none",display:"block"}})
                             )
                           : React.createElement(React.Fragment, null, 
-                              null
+                              React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,pointerEvents:"none",padding:"0 6%",textAlign:"center",color:placeholderChrome.label}},
+                                React.createElement("div",{style:{fontSize:labelFontSize+1.4,fontWeight:700,letterSpacing:".08em",textTransform:"uppercase",lineHeight:1}},"PNG"),
+                                React.createElement("div",{style:{fontSize:labelFontSize+0.15,lineHeight:1.25,whiteSpace:"nowrap",opacity:.9}},"이미지 영역")
+                              )
                             ),
                 isSel&&React.createElement(React.Fragment,null,
                   React.createElement("div",{onMouseDown:function(e){if(!spaceHeld)beginDrag(e,sz.id,layer.id,"move")},style:{position:"absolute",top:-2,left:-2,right:-2,height:5,cursor:spaceHeld?"grab":"move",background:"transparent"}}),
