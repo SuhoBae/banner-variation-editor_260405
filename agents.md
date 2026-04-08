@@ -349,6 +349,12 @@ Situation: After enabling GitHub Pages deployment, the Vite `base` path was hard
 
 Resolution: Changed `vite.config.js` to use the repo base only when `GITHUB_ACTIONS` is present, and `/` everywhere else. This keeps GitHub Pages builds working while restoring correct root-relative asset URLs for Vercel deployments.
 
+[2026-04-08] Export Robustness for Browser Differences
+
+Situation: Export could fail with vague browser errors because the code assumed `document.fonts.ready`, `canvas.toBlob`, and directory-picking flows were always available and successful. In practice, browser differences or permission/cancel paths could turn export into an uncaught runtime failure.
+
+Resolution: Added safe helpers for font readiness and canvas blob generation, guarded against missing `document.fonts`, and made both directory-save and fallback-download exports surface clearer status messages. `AbortError` from the picker is now treated as a cancel instead of a hard failure, and null blob generation now raises an explicit export error path instead of crashing during `URL.createObjectURL`.
+
 [2026-04-08] LGE.COM Banner Preset Sizes and Layout Defaults
 
 Situation: The editor's default board catalog and auto-layout still reflected generic ad sizes, while the user needed the initial LGE.COM banner set to match eight supplied PNG references in board size, Korean copy, and the default placement of text and image regions.

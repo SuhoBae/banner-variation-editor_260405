@@ -1270,13 +1270,32 @@ export default function App(){
       image.src = src;
     });
   }
+  function waitForFontsReady(){
+    if(typeof document === "undefined" || !document.fonts || !document.fonts.ready) return Promise.resolve();
+    return Promise.resolve(document.fonts.ready).catch(function(){ return null; });
+  }
+  function canvasToBlobSafe(canvas){
+    return new Promise(function(resolve,reject){
+      if(!canvas || typeof canvas.toBlob !== "function"){
+        reject(new Error("canvas-to-blob-unsupported"));
+        return;
+      }
+      canvas.toBlob(function(blob){
+        if(!blob){
+          reject(new Error("canvas-to-blob-failed"));
+          return;
+        }
+        resolve(blob);
+      },"image/png");
+    });
+  }
   function findSquareThumbnailBoard(snapshot){
     var selected = (snapshot.selIds || []).map(function(id){ return getSnapshotSizeById(snapshot, id); }).filter(Boolean);
     return selected.find(function(size){ return Math.abs(size.w - size.h) < 1; }) || null;
   }
   function renderSnapshotThumbnail(snapshot, sz){
     if(!snapshot || !sz) return Promise.resolve(null);
-    return document.fonts.ready.then(function(){
+    return waitForFontsReady().then(function(){
       var scale = 240 / Math.max(sz.w, sz.h);
       var canvas = document.createElement("canvas");
       canvas.width = Math.max(1, Math.round(sz.w * scale));
@@ -1405,7 +1424,7 @@ export default function App(){
     }, 1500);
   }
 
-  function renderExportCanvas(sz){return document.fonts.ready.then(function(){var c=document.createElement("canvas");c.width=sz.w;c.height=sz.h;var ctx=c.getContext("2d");ctx.fillStyle=bgColor;ctx.fillRect(0,0,sz.w,sz.h);var sorted=layers.slice().sort(function(a,b){return a.zIndex-b.zIndex});return Promise.all(sorted.map(function(baseLayer){
+  function renderExportCanvas(sz){return waitForFontsReady().then(function(){var c=document.createElement("canvas");c.width=sz.w;c.height=sz.h;var ctx=c.getContext("2d");ctx.fillStyle=bgColor;ctx.fillRect(0,0,sz.w,sz.h);var sorted=layers.slice().sort(function(a,b){return a.zIndex-b.zIndex});return Promise.all(sorted.map(function(baseLayer){
     var layer = getLayerForBoard(sz.id, baseLayer);
     var isHidden = layer.hidden;
     if(!layer.visible || isHidden) return Promise.resolve();
@@ -1441,14 +1460,13 @@ export default function App(){
       var fs=er.fs;if(fs<=0)return Promise.resolve();ctx.font=layer.weight+" "+fs+'px "'+layer.font+'","Pretendard","Noto Sans KR",sans-serif';var tx,ty=dy+dh/2;if(layer.align==="center"){ctx.textAlign="center";tx=dx+dw/2}else if(layer.align==="right"){ctx.textAlign="right";tx=dx+dw}else{ctx.textAlign="left";tx=dx}if(layer.role==="cta"&&layer.bg){var met=ctx.measureText(layer.content);var pH=CTA_PAD_X_PX,pV=CTA_PAD_Y_PX;var bw=met.width+pH*2,bh=fs+pV*2;var bx=tx-bw/2,by=ty-bh/2;if(layer.align==="left")bx=tx;if(layer.align==="right")bx=tx-bw;ctx.fillStyle=layer.bg;ctx.beginPath();var rd=Math.min(fs*.2,bh/3);ctx.moveTo(bx+rd,by);ctx.lineTo(bx+bw-rd,by);ctx.quadraticCurveTo(bx+bw,by,bx+bw,by+rd);ctx.lineTo(bx+bw,by+bh-rd);ctx.quadraticCurveTo(bx+bw,by+bh,bx+bw-rd,by+bh);ctx.lineTo(bx+rd,by+bh);ctx.quadraticCurveTo(bx,by+bh,bx,by+bh-rd);ctx.lineTo(bx,by+rd);ctx.quadraticCurveTo(bx,by,bx+rd,by);ctx.closePath();ctx.fill();ctx.textBaseline="middle";ctx.fillStyle=layer.color;ctx.fillText(layer.content,tx,ty);}else{ctx.textBaseline="top";ctx.fillStyle=layer.color;var lines=layer.content.split("\n");var lineH=fs*(layer.lh || DEFAULT_LINE_HEIGHT);var startY=dy;for(var li=0;li<lines.length;li++){ctx.fillText(lines[li],tx,startY+(li*lineH));}}}
     return Promise.resolve();
   })).then(function(){return c})})}
-  function exportOne(sz){return renderExportCanvas(sz).then(function(c){return new Promise(function(resolve){c.toBlob(function(blob){var url=URL.createObjectURL(blob);var a=document.createElement("a");a.href=url;a.download="App_"+sz.w+"x"+sz.h+"_"+sz.label.replace(/[\s/:]+/g,"_")+".png";document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);resolve()},"image/png")})})}
+  function exportOne(sz){return renderExportCanvas(sz).then(function(c){return canvasToBlobSafe(c).then(function(blob){var url=URL.createObjectURL(blob);var a=document.createElement("a");a.href=url;a.download="App_"+sz.w+"x"+sz.h+"_"+sz.label.replace(/[\s/:]+/g,"_")+".png";document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);})})}
   async function exportWithDirectoryPicker(list){
     var dirHandle = await window.showDirectoryPicker();
     for(var i=0;i<list.length;i++){
       var sz = list[i];
       var canvas = await renderExportCanvas(sz);
-      var blob = await new Promise(function(resolve){ canvas.toBlob(resolve,"image/png"); });
-      if(!blob) continue;
+      var blob = await canvasToBlobSafe(canvas);
       var filename = "App_"+sz.w+"x"+sz.h+"_"+sz.label.replace(/[\s/:]+/g,"_")+".png";
       var fileHandle = await dirHandle.getFileHandle(filename,{create:true});
       var writable = await fileHandle.createWritable();
@@ -1457,7 +1475,40 @@ export default function App(){
     }
   }
   
-  function handleExport(){var list=visSizes.filter(function(s){return exportChecked[s.id]});if(list.length===0)return;if(typeof window !== "undefined" && typeof window.showDirectoryPicker==="function"){exportWithDirectoryPicker(list).catch(function(){var i=0;(function next(){if(i>=list.length)return;exportOne(list[i]).then(function(){i++;if(i<list.length)setTimeout(next,350)})})()});return;}var i=0;(function next(){if(i>=list.length)return;exportOne(list[i]).then(function(){i++;if(i<list.length)setTimeout(next,350)})})()}
+  function handleExport(){
+    var list=visSizes.filter(function(s){return exportChecked[s.id]});
+    if(list.length===0) return;
+    function runDownloadFallback(error){
+      if(error && error.name==="AbortError"){
+        setSaveMessage("내보내기를 취소했습니다.");
+        return;
+      }
+      var i=0;
+      (function next(){
+        if(i>=list.length){
+          setSaveMessage("내보내기를 완료했습니다.");
+          return;
+        }
+        exportOne(list[i]).then(function(){
+          i++;
+          if(i<list.length) setTimeout(next,350);
+          else next();
+        }).catch(function(err){
+          console.error(err);
+          setSaveMessage("Export 오류가 발생했습니다. 브라우저 저장 권한 또는 캔버스 저장 지원을 확인해주세요.");
+        });
+      })();
+    }
+    if(typeof window !== "undefined" && typeof window.showDirectoryPicker==="function"){
+      exportWithDirectoryPicker(list).then(function(){
+        setSaveMessage("선택한 경로에 PNG를 저장했습니다.");
+      }).catch(function(err){
+        runDownloadFallback(err);
+      });
+      return;
+    }
+    runDownloadFallback();
+  }
   var exportCount=Object.keys(exportChecked).filter(function(k){return exportChecked[k]}).length;
   function updateLayer(id,k,v){setLayers(function(p){return p.map(function(l){if(l.id!==id)return l;var n=Object.assign({},l);n[k]=v;return n})})}
   function toggleSize(id){setSelIds(function(p){return p.indexOf(id)!==-1?p.filter(function(x){return x!==id}):p.concat([id])})}
