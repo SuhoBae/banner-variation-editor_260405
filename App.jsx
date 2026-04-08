@@ -14,9 +14,71 @@ var FONTS = [
   {family:"Roboto",weights:[300,400,500,700,900]},{family:"Montserrat",weights:[300,400,500,600,700,800,900]},
   {family:"Playfair Display",weights:[400,500,600,700,800,900]},{family:"Oswald",weights:[300,400,500,600,700]},
 ];
+var LGE_SIZES = [
+  {id:"lge-list-pcmo",w:656,h:469,label:"LGE.COM 리스트배너 PCMO",safe:{t:0,b:0,l:0,r:0,pct:false}},
+  {id:"lge-event-hero-mo",w:780,h:390,label:"LGE.COM 이벤트히어로배너 MO",safe:{t:0,b:0,l:0,r:0,pct:false}},
+  {id:"lge-popup-pc",w:632,h:620,label:"LGE.COM 홈메인팝업 PC",safe:{t:0,b:0,l:0,r:0,pct:false}},
+  {id:"lge-bottomsheet-mo",w:720,h:472,label:"LGE.COM 홈메인바텀시트 MO",safe:{t:0,b:0,l:0,r:0,pct:false}},
+  {id:"lge-gnb-pcmo",w:300,h:300,label:"LGE.COM GNB배너 PCMO",safe:{t:0,b:0,l:0,r:0,pct:false}},
+  {id:"lge-pdp-mo",w:656,h:220,label:"LGE.COM PDP배너 MO",safe:{t:0,b:0,l:0,r:0,pct:false}},
+  {id:"lge-pdp-pc",w:1380,h:180,label:"LGE.COM PDP배너 PC",safe:{t:0,b:0,l:0,r:0,pct:false}},
+  {id:"lge-event-hero-pc",w:1760,h:360,label:"LGE.COM 이벤트히어로배너 PC",safe:{t:0,b:0,l:0,r:0,pct:false}},
+];
+var LGE_SIZE_IDS = LGE_SIZES.map(function(size){ return size.id; });
+var DEFAULT_LGE_BOARD_ID = "lge-event-hero-mo";
+var LGE_LAYER_PRESETS = {
+  "lge-list-pcmo":{
+    img1:{x:5,y:3,w:90,h:64},
+    l1:{hidden:true},
+    l2:{hidden:true},
+    l3:{hidden:true}
+  },
+  "lge-event-hero-mo":{
+    img1:{x:46,y:8,w:49,h:61},
+    l1:{content:"워시타워\n고객 감사제",x:6,y:15,fs:40,weight:800,lh:1.16,color:"#111111",align:"left"},
+    l2:{content:"2026.4.1 - 4.30",x:6,y:59,fs:19,weight:400,lh:1.2,color:"#111111",align:"left"},
+    l3:{hidden:true}
+  },
+  "lge-popup-pc":{
+    img1:{x:11,y:45,w:82,h:34},
+    l1:{content:"All New 세일 한정\n홈스타일 첫구매 쿠폰",x:14,y:17,fs:54,weight:800,lh:1.18,color:"#090909",align:"left"},
+    l2:{content:"주방/생활용품부터 패브릭까지",x:18,y:9,fs:21,weight:700,lh:1.2,color:"#ff3b30",align:"left"},
+    l3:{content:"쿠폰 받으러 가기 >",x:22,y:84,fs:24,weight:700,lh:1.2,color:"#FFFFFF",align:"center",bg:"#000000"}
+  },
+  "lge-bottomsheet-mo":{
+    img1:{x:43,y:42,w:51,h:42},
+    l1:{content:"All New 세일 한정\n홈스타일 첫구매 쿠폰",x:8,y:19,fs:38,weight:800,lh:1.18,color:"#090909",align:"left"},
+    l2:{content:"주방/생활용품부터 패브릭까지",x:8,y:10,fs:18,weight:700,lh:1.2,color:"#ff3b30",align:"left"},
+    l3:{content:"쿠폰 받으러 가기 >",x:8,y:55,fs:24,weight:500,lh:1.2,color:"#5a5a5a",align:"left",bg:null}
+  },
+  "lge-gnb-pcmo":{
+    img1:{x:7,y:6,w:86,h:60},
+    l1:{hidden:true},
+    l2:{hidden:true},
+    l3:{hidden:true}
+  },
+  "lge-pdp-mo":{
+    img1:{x:67,y:11,w:28,h:60},
+    l1:{content:"봄철 빨래 고민\nLG 트롬 트루스팀으로 해결",x:7,y:34,fs:27,weight:800,lh:1.18,color:"#111111",align:"left"},
+    l2:{content:"캐시백 증정부터 월 구독료 할인까지",x:7,y:13,fs:15,weight:700,lh:1.2,color:"#111111",align:"left"},
+    l3:{content:"행사 기간 : 2026년 4월 1일 ~ 4월 30일",x:7,y:73,fs:13,weight:700,lh:1.2,color:"#3b3429",align:"left",bg:null}
+  },
+  "lge-pdp-pc":{
+    img1:{x:74,y:8,w:21,h:80},
+    l1:{content:"봄철 빨래 고민 LG 트롬 트루스팀으로 해결",x:7,y:34,fs:28,weight:800,lh:1.16,color:"#111111",align:"left"},
+    l2:{content:"캐시백 증정부터 월 구독료 할인까지",x:7,y:19,fs:16,weight:700,lh:1.2,color:"#111111",align:"left"},
+    l3:{content:"행사 기간 : 2026년 4월 1일 ~ 4월 30일",x:7,y:70,fs:14,weight:700,lh:1.2,color:"#3b3429",align:"left",bg:null}
+  },
+  "lge-event-hero-pc":{
+    img1:{x:61,y:6,w:35,h:76},
+    l1:{content:"워시타워\n고객 감사제",x:17,y:25,fs:57,weight:800,lh:1.18,color:"#111111",align:"left"},
+    l2:{content:"2026.4.1 - 4.30",x:17,y:62,fs:24,weight:400,lh:1.2,color:"#111111",align:"left"},
+    l3:{hidden:true}
+  }
+};
 var PLATFORMS = {
+  lgecom:{name:"LGE.COM",icon:"LGE",sizes:LGE_SIZES},
   gdn:{name:"Google Display",icon:"📐",sizes:[
-    {id:"lge1",w:780,h:780,label:"LGE_heroBanner",safe:{t:0,b:0,l:0,r:0,pct:false}},
     {id:"g1",w:300,h:250,label:"Medium Rect",safe:{t:10,b:10,l:10,r:10,pct:true}},
     {id:"g2",w:336,h:280,label:"Large Rect",safe:{t:10,b:10,l:10,r:10,pct:true}},
     {id:"g3",w:728,h:90,label:"Leaderboard",safe:{t:10,b:10,l:10,r:10,pct:true}},
@@ -154,7 +216,7 @@ function getLayerDisplayName(layer){
 
 export default function App(){
   var fileRef=useRef(null),imgObjRef=useRef(null),dragRef=useRef(null),boardSelectRef=useRef(null),canvasRef=useRef(null),viewportRef=useRef(null),panRef=useRef(null),lastPointerRef=useRef(null),editingRef=useRef(null),editingDraftRef=useRef(""),isComposingRef=useRef(false);
-  var _bg=useState("#0f0f0f");var bgColor=_bg[0],setBgColor=_bg[1];
+  var _bg=useState("#fbf1cb");var bgColor=_bg[0],setBgColor=_bg[1];
   var _z=useState(1);var zoom=_z[0],setZoom=_z[1];
   var _pan=useState({x:0,y:0});var pan=_pan[0],setPan=_pan[1];
   var _ss=useState(false);var showSafe=_ss[0],setShowSafe=_ss[1];
@@ -297,13 +359,13 @@ export default function App(){
     setHistCount(function(c){return c+1});
   }
 
-  var _sel=useState(["lge1"]);var selIds=_sel[0],setSelIds=_sel[1];
+  var _sel=useState(LGE_SIZE_IDS);var selIds=_sel[0],setSelIds=_sel[1];
   var _cs=useState([]);var customSizes=_cs[0],setCustomSizes=_cs[1];
   var _cf=useState({name:"",w:"",h:"",st:"0",sb:"0",sl:"0",sr:"0"});var customForm=_cf[0],setCustomForm=_cf[1];
   var _scf=useState(false);var showCF=_scf[0],setShowCF=_scf[1];
   
-  var _ab=useState(null);var activeBoard=_ab[0],setActiveBoard=_ab[1];
-  var _selBoards=useState([]);var selectedBoardIds=_selBoards[0],setSelectedBoardIds=_selBoards[1];
+  var _ab=useState(DEFAULT_LGE_BOARD_ID);var activeBoard=_ab[0],setActiveBoard=_ab[1];
+  var _selBoards=useState([DEFAULT_LGE_BOARD_ID]);var selectedBoardIds=_selBoards[0],setSelectedBoardIds=_selBoards[1];
   var _selEls=useState([]);var selectedEls=_selEls[0],setSelectedEls=_selEls[1];
   var _ae=useState(null);var activeEl=_ae[0],setActiveEl=_ae[1];
   var _editing=useState(null);var editingTextId=_editing[0],setEditingTextId=_editing[1];
@@ -434,10 +496,14 @@ export default function App(){
   },[zoom, pan.x, pan.y]);
 
   var setOv=useCallback(function(sid,lid,props){setOverrides(function(prev){var bo=prev[sid]||{};var lo=bo[lid]||{};var nb=Object.assign({},bo);nb[lid]=Object.assign({},lo,props);var n=Object.assign({},prev);n[sid]=nb;return n})},[]);
+  function getPresetLayerDefaults(sid,lid){
+    return LGE_LAYER_PRESETS[sid]?.[lid] || {};
+  }
   function getOv(sid,lid){
+    var preset = getPresetLayerDefaults(sid,lid);
     var def = boardDefaults[sid]?.[lid] || {};
     var ov = overrides[sid]?.[lid] || {};
-    return Object.assign({}, def, ov);
+    return Object.assign({}, preset, def, ov);
   }
   function hasManualBoxOverride(sid,lid){
     return !!getOv(sid,lid).manualBox;
@@ -1076,9 +1142,10 @@ export default function App(){
     return getSnapshotResolvedSize(snapshot, size);
   }
   function getSnapshotOv(snapshot, sid, lid){
+    var preset = getPresetLayerDefaults(sid, lid);
     var def = snapshot.boardDefaults && snapshot.boardDefaults[sid] ? snapshot.boardDefaults[sid][lid] || {} : {};
     var ov = snapshot.overrides && snapshot.overrides[sid] ? snapshot.overrides[sid][lid] || {} : {};
-    return Object.assign({}, def, ov);
+    return Object.assign({}, preset, def, ov);
   }
   function getSnapshotLayerForBoard(snapshot, sid, layer){
     return Object.assign({}, layer, getSnapshotOv(snapshot, sid, layer.id));
@@ -1811,4 +1878,3 @@ return React.createElement("div",{className:"app-shell",style:{width:"100%",heig
     )
   );
 }
-

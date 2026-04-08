@@ -342,3 +342,9 @@ Resolution: Added a separate `selectedBoardIds` state for multi-artboard targeti
 Situation: Multi-artboard selection worked with `Ctrl/Cmd + click` and marquee drag, but the user also expected the common design-tool pattern where `Shift` adds to the current artboard selection set.
 
 Resolution: Expanded additive board-selection detection so `Shift` behaves the same as `Ctrl/Cmd` for both direct artboard clicks and empty-canvas marquee selection. This keeps the single `selectedBoardIds` model intact while making multi-selection faster and more ergonomic.
+
+[2026-04-08] LGE.COM Banner Preset Sizes and Layout Defaults
+
+Situation: The editor's default board catalog and auto-layout still reflected generic ad sizes, while the user needed the initial LGE.COM banner set to match eight supplied PNG references in board size, Korean copy, and the default placement of text and image regions.
+
+Resolution: Added a dedicated `LGE.COM` platform with the eight supplied banner sizes, made those boards the initial visible set, and switched the initial active board to the mobile event hero banner. Introduced baked-in board-layer presets so each LGE.COM board now opens with reference-matched Korean text content plus per-board image and text placement defaults. These presets are merged ahead of user overrides, so board reset still returns to the new LGE.COM baseline instead of the old generic auto-layout.
