@@ -596,9 +596,14 @@ export default function App(){
   }
   function getLayerApplyButtonLabel(sourceSid){
     var selectedVisibleIds = getVisibleSelectedBoardIds();
+    if(selectedVisibleIds.length > 1) return "선택된 아트보드에 일괄 반영";
+    return "전체 아트보드에 일괄 반영";
+  }
+  function getLayerApplyHelperText(sourceSid){
+    var selectedVisibleIds = getVisibleSelectedBoardIds();
     var targetCount = getApplyTargetBoardIds(sourceSid).length;
-    if(selectedVisibleIds.length > 1) return "선택 보드 " + targetCount + "개에 적용";
-    return "전체 보드에 적용";
+    if(selectedVisibleIds.length > 1) return "현재 선택된 " + (selectedVisibleIds.length-1) + "개 보드에 같은 속성을 복사합니다.";
+    return targetCount>0 ? "현재 레이어 속성을 나머지 " + targetCount + "개 보드에 복사합니다." : "복사할 다른 아트보드가 없습니다.";
   }
   function getReplicableLayerProps(sourceSid, lid){
     var baseLayer = layers.find(function(layer){ return layer.id===lid; });
@@ -627,6 +632,35 @@ export default function App(){
         next[boardId] = board;
       });
       return next;
+    });
+  }
+  function applyImageDataUrlToBoards(boardIds,lid,dataUrl){
+    return new Promise(function(resolve,reject){
+      var validBoardIds = (boardIds || []).filter(Boolean);
+      if(!validBoardIds.length || !lid || !dataUrl) return resolve(null);
+      var img = new Image();
+      img.onload = function(){
+        imgObjRef.current = img;
+        setOverrides(function(prev){
+          var next = Object.assign({}, prev);
+          validBoardIds.forEach(function(boardId){
+            var board = Object.assign({}, next[boardId] || {});
+            board[lid] = Object.assign({}, board[lid] || {}, {src:dataUrl, imgW:img.naturalWidth, imgH:img.naturalHeight, hidden:false});
+            next[boardId] = board;
+          });
+          return next;
+        });
+        resolve(img);
+      };
+      img.onerror = reject;
+      img.src = dataUrl;
+    });
+  }
+  function shouldBroadcastInitialImageUpload(lid){
+    if(!lid) return false;
+    return visSizes.length > 1 && visSizes.every(function(size){
+      var boardLayer = getLayerForBoard(size.id, layers.find(function(layer){ return layer.id===lid; }));
+      return !(boardLayer && boardLayer.src);
     });
   }
   function clearLayerSelection(){
@@ -1142,7 +1176,8 @@ export default function App(){
     saveHistory();
     var reader=new FileReader();
     reader.onload=function(ev){
-      applyImageDataUrlToBoard(activeBoard, targetImageLayerId, ev.target.result).catch(function(){});
+      var targetBoardIds = shouldBroadcastInitialImageUpload(targetImageLayerId) ? visSizes.map(function(size){ return size.id; }) : [activeBoard];
+      applyImageDataUrlToBoards(targetBoardIds, targetImageLayerId, ev.target.result).catch(function(){});
     };
     reader.readAsDataURL(file);
   }
@@ -1619,7 +1654,11 @@ return React.createElement("div",{className:"app-shell",style:{width:"100%",heig
           imgLayer:layerListImageLayer,
           onUploadImageFile:handleFile,
           onRemoveImage:handleLayerPanelRemoveImage,
-          imageStatusText:"PNG를 업로드하거나 드래그해서 현재 이미지 레이어에 적용합니다.",
+          imageStatusText:"첫 업로드는 전체 아트보드에 공통 적용되고, 이후 업로드는 현재 아트보드에만 적용됩니다.",
+          onApplyCurrentLayerToBoards:applyCurrentLayerToBoards,
+          canApplyCurrentLayerToBoards:!!(activeBoard && activeEl && getApplyTargetBoardIds(activeBoard).length>0),
+          applyCurrentLayerLabel:activeBoard ? getLayerApplyButtonLabel(activeBoard) : "전체 아트보드에 일괄 반영",
+          applyCurrentLayerHelperText:activeBoard ? getLayerApplyHelperText(activeBoard) : "아트보드와 레이어를 먼저 선택하세요.",
           onAddTextLayer:handleAddTextLayer,
           onDeleteLayer:function(layerId){
             if(!activeBoard || !layerId) return;
@@ -1774,8 +1813,7 @@ return React.createElement("div",{className:"app-shell",style:{width:"100%",heig
                   React.createElement(NumberInput,{label:"Pan Y",value:getOv(activeBoard,activeEl).imgY??0,onFocus:saveHistory,onChange:function(v){setOv(activeBoard,activeEl,{imgY:v})},min:-200,max:200,step:1,unit:"%"})
                 ),
                 React.createElement("div",{style:{marginTop:10,paddingTop:10,borderTop:"1px solid #1a1a1a"}},
-                  React.createElement("button",{onClick:applyCurrentLayerToBoards,disabled:getApplyTargetBoardIds(activeBoard).length===0,style:{width:"100%",padding:"7px 10px",border:"1px solid rgba(124,196,255,.22)",borderRadius:10,background:"rgba(124,196,255,.08)",color:getApplyTargetBoardIds(activeBoard).length===0?MD.muted:MD.primary,cursor:getApplyTargetBoardIds(activeBoard).length===0?"default":"pointer",fontSize:10,fontWeight:700,fontFamily:"inherit",opacity:getApplyTargetBoardIds(activeBoard).length===0?.5:1}},getLayerApplyButtonLabel(activeBoard)),
-                  React.createElement("div",{style:{fontSize:9,color:MD.muted,marginTop:6,lineHeight:1.5}},"여러 보드를 선택하면 그 보드들에만, 선택이 하나면 전체 보드에 적용됩니다.")
+                  React.createElement("div",{style:{fontSize:9,color:MD.muted,lineHeight:1.5}}, "일괄 반영 버튼은 왼쪽 Layers 패널 아래에서 사용할 수 있습니다.")
                 )
               )
             :React.createElement(React.Fragment,null,
@@ -1804,8 +1842,7 @@ return React.createElement("div",{className:"app-shell",style:{width:"100%",heig
                     setOv(activeBoard, activeEl, {hidden: !isHidden});
                   },style:{width:"100%",padding:"4px",border:isHidden?"1px solid #00d4ff":"1px solid #552222",borderRadius:3,background:isHidden?"rgba(0,212,255,0.1)":"rgba(255,0,0,0.1)",color:isHidden?"#00d4ff":"#f44",cursor:"pointer",fontSize:10,fontFamily:"inherit",marginTop:4}}, isHidden ? "👁 이 보드에서 숨김 해제" : "🚫 이 보드에서 숨기기")
                 })(),
-                React.createElement("button",{onClick:applyCurrentLayerToBoards,disabled:getApplyTargetBoardIds(activeBoard).length===0,style:{width:"100%",padding:"7px 10px",border:"1px solid rgba(124,196,255,.22)",borderRadius:10,background:"rgba(124,196,255,.08)",color:getApplyTargetBoardIds(activeBoard).length===0?MD.muted:MD.primary,cursor:getApplyTargetBoardIds(activeBoard).length===0?"default":"pointer",fontSize:10,fontWeight:700,fontFamily:"inherit",marginTop:8,opacity:getApplyTargetBoardIds(activeBoard).length===0?.5:1}},getLayerApplyButtonLabel(activeBoard)),
-                React.createElement("div",{style:{fontSize:9,color:MD.muted,marginTop:6,lineHeight:1.5}},"여러 보드를 선택하면 그 보드들에만, 선택이 하나면 전체 보드에 적용됩니다.")
+                React.createElement("div",{style:{fontSize:9,color:MD.muted,marginTop:8,lineHeight:1.5}},"일괄 반영 버튼은 왼쪽 Layers 패널 아래에서 사용할 수 있습니다.")
               ),
               React.createElement("div",{style:{padding:10,borderBottom:"1px solid #1a1a1a"}},
                 React.createElement("div",{style:sT},"🔤 타이포"),

@@ -307,6 +307,44 @@ export default function LayerListPanel(props) {
         "Upload PNG"
       )
     ),
+    React.createElement(
+      "button",
+      {
+        onClick: function () {
+          if (isDisabled || !props.onApplyCurrentLayerToBoards) return;
+          props.onApplyCurrentLayerToBoards();
+        },
+        disabled: isDisabled || !props.canApplyCurrentLayerToBoards,
+        style: {
+          width: "100%",
+          padding: "10px 12px",
+          border: "1px solid rgba(124,196,255,.22)",
+          borderRadius: 12,
+          background: "rgba(124,196,255,.08)",
+          color: isDisabled || !props.canApplyCurrentLayerToBoards ? MD.muted : MD.primary,
+          cursor: isDisabled || !props.canApplyCurrentLayerToBoards ? "default" : "pointer",
+          fontSize: 11,
+          fontWeight: 700,
+          fontFamily: "inherit",
+          marginTop: 8,
+          opacity: isDisabled || !props.canApplyCurrentLayerToBoards ? 0.5 : 1,
+        },
+      },
+      props.applyCurrentLayerLabel || "전체 아트보드에 일괄 반영"
+    ),
+    React.createElement(
+      "div",
+      {
+        style: {
+          fontSize: 9,
+          color: MD.muted,
+          lineHeight: 1.5,
+          marginTop: 6,
+          textAlign: "center",
+        },
+      },
+      props.applyCurrentLayerHelperText || "현재 레이어 속성을 다른 아트보드에 복사합니다."
+    ),
     React.createElement("input", {
       ref: props.fileRef,
       type: "file",

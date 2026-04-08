@@ -348,3 +348,9 @@ Resolution: Expanded additive board-selection detection so `Shift` behaves the s
 Situation: The editor's default board catalog and auto-layout still reflected generic ad sizes, while the user needed the initial LGE.COM banner set to match eight supplied PNG references in board size, Korean copy, and the default placement of text and image regions.
 
 Resolution: Added a dedicated `LGE.COM` platform with the eight supplied banner sizes, made those boards the initial visible set, and switched the initial active board to the mobile event hero banner. Introduced baked-in board-layer presets so each LGE.COM board now opens with reference-matched Korean text content plus per-board image and text placement defaults. These presets are merged ahead of user overrides, so board reset still returns to the new LGE.COM baseline instead of the old generic auto-layout.
+
+[2026-04-08] Layer Panel Batch Apply and First-Upload Image Broadcast
+
+Situation: Users needed a clearer place to apply the currently edited layer across artboards, with wording that matches whether multiple boards are selected or only one board is being edited. They also wanted the very first uploaded image to seed every visible artboard automatically, while later uploads stay board-specific unless the explicit batch-apply action is used.
+
+Resolution: Moved the batch-apply action into the left `Layers` panel under the PNG upload area and made its label switch between `선택된 아트보드에 일괄 반영` and `전체 아트보드에 일괄 반영` based on the current artboard selection set. Reused the existing per-layer replication payload so uploaded images, text styling, CTA properties, and board-scoped transform values all copy through the same path. Added an initial-image broadcast rule: if the active image layer has no source on any visible artboard yet, the first PNG upload writes to every visible board at once; after that, uploads stay scoped to the active board.
