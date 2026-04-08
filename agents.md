@@ -355,6 +355,12 @@ Situation: Export could fail with vague browser errors because the code assumed 
 
 Resolution: Added safe helpers for font readiness and canvas blob generation, guarded against missing `document.fonts`, and made both directory-save and fallback-download exports surface clearer status messages. `AbortError` from the picker is now treated as a cancel instead of a hard failure, and null blob generation now raises an explicit export error path instead of crashing during `URL.createObjectURL`.
 
+[2026-04-08] GitHub Pages Export Picker Bypass
+
+Situation: On `github.io`, the browser's directory picker can reject protected folders with a system-files warning before export even begins. That behavior is outside the app's control, but it makes the GitHub Pages version feel broken when users expect a normal download.
+
+Resolution: Added a small host check so the editor does not use `showDirectoryPicker()` on `github.io`. GitHub Pages now goes straight to standard browser downloads, while Vercel/local environments can still use folder-based export when supported.
+
 [2026-04-08] LGE.COM Banner Preset Sizes and Layout Defaults
 
 Situation: The editor's default board catalog and auto-layout still reflected generic ad sizes, while the user needed the initial LGE.COM banner set to match eight supplied PNG references in board size, Korean copy, and the default placement of text and image regions.

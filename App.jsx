@@ -1289,6 +1289,12 @@ export default function App(){
       },"image/png");
     });
   }
+  function canUseDirectoryPicker(){
+    if(typeof window === "undefined" || typeof window.showDirectoryPicker !== "function") return false;
+    var host = window.location && window.location.hostname ? window.location.hostname : "";
+    if(/github\.io$/i.test(host)) return false;
+    return true;
+  }
   function findSquareThumbnailBoard(snapshot){
     var selected = (snapshot.selIds || []).map(function(id){ return getSnapshotSizeById(snapshot, id); }).filter(Boolean);
     return selected.find(function(size){ return Math.abs(size.w - size.h) < 1; }) || null;
@@ -1499,7 +1505,7 @@ export default function App(){
         });
       })();
     }
-    if(typeof window !== "undefined" && typeof window.showDirectoryPicker==="function"){
+    if(canUseDirectoryPicker()){
       exportWithDirectoryPicker(list).then(function(){
         setSaveMessage("선택한 경로에 PNG를 저장했습니다.");
       }).catch(function(err){
